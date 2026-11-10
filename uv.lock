@@ -1,0 +1,195 @@
+version = 1
+revision = 5
+requires-python = ">=3.12"
+resolution-markers = [
+    "sys_platform == 'linux'",
+]
+supported-markers = [
+    "sys_platform == 'linux'",
+]
+
+[[package]]
+name = "annotated-types"
+version = "0.8.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/annotated_types-0.8.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "iniconfig"
+version = "2.3.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/iniconfig-2.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "markdown-it-py"
+version = "4.2.0"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "mdurl" },
+]
+wheels = [
+    { path = "/opt/wheels/markdown_it_py-4.2.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/mdurl-0.1.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "packaging"
+version = "26.3"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/packaging-26.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pluggy"
+version = "1.6.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/pluggy-1.6.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pydantic"
+version = "2.13.5"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "annotated-types" },
+    { name = "pydantic-core" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+wheels = [
+    { path = "/opt/wheels/pydantic-2.13.5-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pydantic-core"
+version = "2.46.5"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "/opt/wheels/pydantic_core-2.46.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+    { path = "/opt/wheels/pydantic_core-2.46.5-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "pygments"
+version = "2.21.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/pygments-2.21.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pytest"
+version = "9.1.1"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
+]
+wheels = [
+    { path = "/opt/wheels/pytest-9.1.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "python-dotenv"
+version = "1.2.3"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/python_dotenv-1.2.3-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pyyaml"
+version = "6.0.3"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+    { path = "/opt/wheels/pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "rich"
+version = "15.0.0"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "pygments" },
+]
+wheels = [
+    { path = "/opt/wheels/rich-15.0.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "ruff"
+version = "0.16.9"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/ruff-0.16.9-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "solo-dm"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+    { name = "rich" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.13" },
+    { name = "python-dotenv", specifier = ">=1.2" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rich", specifier = ">=15.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.1" },
+    { name = "ruff", specifier = ">=0.16" },
+]
+
+[[package]]
+name = "typing-extensions"
+version = "4.16.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/typing_extensions-4.16.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "typing-inspection"
+version = "0.4.4"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "/opt/wheels/typing_inspection-0.4.4-py3-none-any.whl" },
+]

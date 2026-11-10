@@ -1,7 +1,42 @@
 [project]
-name = "dnd-game"
+name = "solo-dm"
 version = "0.1.0"
-description = "Add your description here"
+description = "Solo D&D 5e engine: deterministic Python rules, LLM interpreter and narrator."
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.13",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.2",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+solo-dm = "solo_dm.composition_root:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "ruff>=0.16",
+]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: calls the real model; run only with -m live"]
+addopts = "-m 'not live'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.uv]
+# The box's wheel store has Linux wheels only, so the lock covers Linux for now.
+# Running on the Mac mini (decided at M6) needs a darwin entry and a relock there.
+environments = ["sys_platform == 'linux'"]

@@ -1,0 +1,7 @@
+# Weapons from the SRD 5.2 equipment tables. Only what the current adventures use.
+- weapon_id: greatsword
+  name: Greatsword
+  ability: STR
+  damage_dice: 2d6
+  damage_type: slashing
+  # Not yet implemented: Heavy, Two-Handed, mastery Graze.
