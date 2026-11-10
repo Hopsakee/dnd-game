@@ -1,0 +1,14 @@
+# Contracts for import-linter (plan 3.1). import-linter is not in the box's wheel
+# store yet, so tests/test_architecture.py enforces the same rule with an AST walk.
+# Once import-linter is approved, add it to the dev group and run `lint-imports`.
+[importlinter]
+root_package = solo_dm
+
+[importlinter:contract:core-is-independent]
+name = Core never imports infrastructure or the composition root
+type = forbidden
+source_modules =
+    solo_dm.core
+forbidden_modules =
+    solo_dm.infrastructure
+    solo_dm.composition_root

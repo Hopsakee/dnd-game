@@ -1,0 +1,16 @@
+# solo-dm settings. No secrets here: an API key, if any, goes in .env.solo_dm
+# (gitignored, outside the box only). See BUILD_PLAN.md 3.9.
+llm:
+  provider: anthropic
+  model: claude-haiku-5-5
+  base_url: null          # in the box: the credential broker's URL (set up before M3)
+  max_tokens: 1024
+  temperature: 0.7
+paths:
+  adventures: adventures
+  srd: srd
+  lore: lore
+  campaigns: campaigns
+  llm_call_log: logs/llm_calls.jsonl
+cost:
+  daily_cap_usd: null     # refuse new model calls above this; null = no cap

@@ -1,0 +1,16 @@
+# Pre-made level 1 Fighter, built with SRD 5.2 rules.
+# Standard array 15/14/13/12/10/8; Soldier background +1 STR, +2 CON.
+name: Fighter
+level: 1
+abilities: {STR: 16, DEX: 14, CON: 15, INT: 8, WIS: 12, CHA: 10}
+max_hp: 12              # d10 hit die at level 1: 10 + CON modifier (+2)
+armor_class: 17         # Chain Mail 16 + Defense fighting style 1
+proficiency_bonus: 2
+skill_proficiencies: [athletics, intimidation, perception, survival]
+weapons: [greatsword]
+inventory: []
+not_implemented:
+  - "Second Wind (needs rests)"
+  - "Weapon Mastery (Graze)"
+  - "Savage Attacker feat (Soldier background)"
+  - "Saving throws (STR, CON)"

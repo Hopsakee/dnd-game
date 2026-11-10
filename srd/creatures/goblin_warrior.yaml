@@ -1,0 +1,17 @@
+# SRD 5.2 "Goblin Warrior" (CR 1/4). Melee only: v1 combat positioning is abstract.
+stat_block_id: goblin_warrior
+name: Goblin Warrior
+armor_class: 15
+hit_points: 10          # 3d6
+initiative_bonus: 2
+abilities: {STR: 8, DEX: 15, CON: 10, INT: 10, WIS: 8, CHA: 8}
+attacks:
+  - name: Scimitar
+    attack_bonus: 4
+    damage_dice: 1d6
+    damage_modifier: 2
+    damage_type: slashing
+not_implemented:
+  - "Scimitar: +2 (1d4) slashing if it had Advantage on the attack"
+  - "Shortbow (ranged)"
+  - "Nimble Escape (Disengage or Hide as a bonus action)"
