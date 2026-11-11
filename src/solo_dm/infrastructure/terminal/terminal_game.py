@@ -50,7 +50,12 @@ class TerminalGame:
         elif command in builtin and not rest:
             self.console.print(builtin[command]())
         else:
+            location_before = self.session.state.party_location
             self.console.print(self.session.play_turn(self.actor_id, line).narration)
+            # Entering a room shows it, from state rather than from the model, so
+            # the exits and items are always right whichever model narrates.
+            if self.session.state.party_location != location_before:
+                self.console.print(self._look())
         return True
 
     def _inventory(self) -> str:
