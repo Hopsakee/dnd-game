@@ -57,10 +57,13 @@ gets it from: the `source = { registry = ... }` line of each package.
 
 If `uv sync` on your own machine fails with
 `failed to query metadata of file /opt/wheels/...`, the lock was last written in
-the box. Re-lock against PyPI and sync:
+the box. Delete the lock, lock again against PyPI, and sync. A plain `uv lock`
+is not enough: uv sees the old lock as still valid and keeps its sources.
 
 ```bash
+rm uv.lock
 uv lock
+grep -c /opt/wheels uv.lock   # expect 0
 uv sync
 ```
 
