@@ -12,9 +12,11 @@ from solo_dm.core.state.apply import apply_events
 from solo_dm.core.state.events import (
     AdventureWon,
     AttitudeChanged,
+    BodySearched,
     CombatEnded,
     DoorUnlocked,
     Event,
+    HiddenFound,
     ItemTaken,
     LocationDiscovered,
     MovedTo,
@@ -28,6 +30,7 @@ from solo_dm.core.turn.combat import (
     start_combat,
 )
 from solo_dm.core.turn.intent import Intent
+from solo_dm.core.turn.perception import notice_on_entering
 from solo_dm.core.turn.scene import build_scene
 
 
@@ -79,7 +82,7 @@ def _move(state, adventure, actor_id, intent, dice) -> list[Event]:
     events.append(MovedTo(actor_id=actor_id, location_id=exit_.to))
     if exit_.to not in state.discovered_locations:
         events.append(LocationDiscovered(actor_id=actor_id, location_id=exit_.to))
-    return events
+    return events + notice_on_entering(state, adventure, exit_.to)
 
 
 def _attack(state, adventure, actor_id, intent, dice) -> list[Event]:
@@ -135,6 +138,34 @@ def _open(state, adventure, actor_id, intent, dice) -> list[Event]:
     raise Blocked(f"The way {exit_.direction} is already open.")
 
 
+# Still roll when nothing is hidden, so a search never gives away that a room is empty.
+SEARCH_DC_WHEN_NOTHING_IS_HIDDEN = 10
+
+
+def _search(state, adventure, actor_id, intent, dice) -> list[Event]:
+    if intent.target_id is None:
+        return _search_room(state, adventure, actor_id, dice)
+    creature = state.creatures.get(intent.target_id)
+    if creature is None:
+        raise Blocked("You cannot search that.")
+    if creature.alive:
+        raise Blocked(f"You cannot search the {creature.name} while it is alive.")
+    carried = [i for i, holder in state.items_carried.items() if holder == creature.creature_id]
+    return [BodySearched(actor_id=actor_id, target_id=creature.creature_id, item_ids=carried)]
+
+
+def _search_room(state, adventure, actor_id, dice) -> list[Event]:
+    """One Wisdom (Perception) check; it finds every unfound hidden thing here
+    whose DC the total meets. A failed search can be tried again next turn."""
+    unfound = [(i, dc) for i, dc in adventure.hidden_in(state.party_location)
+               if i in state.hidden_unfound]
+    dc = min((dc for _, dc in unfound), default=SEARCH_DC_WHEN_NOTHING_IS_HIDDEN)
+    check = ability_check(state.party[actor_id], "WIS", "perception", dc, dice)
+    found = [HiddenFound(actor_id=actor_id, target_id=i, method="search")
+             for i, thing_dc in unfound if check.total >= thing_dc]
+    return [check, *found]
+
+
 def _look(state, adventure, actor_id, intent, dice) -> list[Event]:
     return []
 
@@ -157,4 +188,5 @@ _ACTIONS = {
     "unlock": _unlock,
     "open": _open,
     "look": _look,
+    "search": _search,
 }

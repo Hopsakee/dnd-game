@@ -11,7 +11,7 @@ from solo_dm.infrastructure.llm.fake_llm import FakeLLM
 
 CORE_WIN = (
     ["go north", "go east"] + ["attack goblin"] * 8
-    + ["take key", "go west", "unlock north", "go north", "take amulet"]
+    + ["search goblin", "take key", "go west", "unlock north", "go north", "take amulet"]
 )
 GOBLIN_FIGHT = ["go east"] + ["attack goblin"] * 10 + ["take totem"]
 
@@ -91,3 +91,19 @@ def test_use_key_unlocks_the_locked_door():
     outcome, events, _, _ = play("scenarios/locked_door", lines)
     assert "door_unlocked" in events
     assert outcome == "won"
+
+
+def test_core_five_rooms_hidden_things():
+    lines = ["go north", "take ring", "go west"] + ["search"] * 6 + ["take chalice", "inv"]
+    _, events, game, text = play("core_five_rooms", lines, seed=0)
+    assert "You notice the Tarnished Ring." in text  # passive Perception on entering the hall
+    found = [e.method for turn in game.session.turns for e in turn.events
+             if e.type == "hidden_found"]
+    assert found == ["passive", "search"]
+    assert game.session.state.party["hero"].inventory == ("tarnished_ring", "silver_chalice")
+
+
+def test_the_key_must_be_taken_from_the_goblins_body():
+    lines = ["go north", "go east"] + ["attack goblin"] * 8 + ["take key"]
+    _, _, game, _ = play("core_five_rooms", lines, seed=0)
+    assert "iron_key" not in game.session.state.party["hero"].inventory

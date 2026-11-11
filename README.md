@@ -16,8 +16,14 @@ uv run solo-dm play --seed 0   # reproducible game
 uv run solo-dm play --adventure scenarios/locked_door
 ```
 
-Try `go north`, `attack goblin`, `take key`, `unlock north`, and the built-in
-commands `inv`, `hp`, `look`, `map`, `flag <note>`, `help`, `quit`.
+Try `go north`, `attack goblin`, `search`, `search goblin`, `take key`,
+`unlock north`, and the built-in commands `inv`, `hp`, `look`, `map`,
+`flag <note>`, `help`, `quit`.
+
+M2.5 adds hidden things. On entering a room the party's best passive Perception
+(10 + Wisdom modifier + proficiency if proficient) finds every hidden item or
+exit whose DC it meets. `search` rolls Wisdom (Perception) for the rest and can
+be tried again. A dead creature's belongings appear when you search its body.
 
 ## Commands
 

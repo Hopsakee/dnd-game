@@ -87,6 +87,8 @@ class GameState(FrozenModel):
     outcome: Literal["playing", "won", "lost"] = "playing"
     discovered_locations: tuple[str, ...] = ()
     items_on_floor: dict[str, str] = {}  # item_id -> location_id; held items are in inventory
+    items_carried: dict[str, str] = {}  # item_id -> creature_id, until the body is searched
+    hidden_unfound: tuple[str, ...] = ()  # ids of hidden items and exits not yet found
     locked_exits: tuple[str, ...] = ()
     quest_flags: tuple[str, ...] = ()
 

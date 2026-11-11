@@ -7,6 +7,7 @@ from solo_dm.core.state.events import (
     AdventureLost,
     AdventureWon,
     AttitudeChanged,
+    BodySearched,
     CharacterDefeated,
     CombatEnded,
     CombatStarted,
@@ -14,6 +15,7 @@ from solo_dm.core.state.events import (
     DamageDealt,
     DoorUnlocked,
     Event,
+    HiddenFound,
     ItemTaken,
     LocationDiscovered,
     MovedTo,
@@ -59,6 +61,14 @@ def apply_event(state: GameState, event: Event) -> GameState:
             holder = state.party[actor_id]
             state = _update_combatant(state, actor_id, inventory=(*holder.inventory, item_id))
             return state.model_copy(update={"items_on_floor": floor})
+        case HiddenFound(target_id=target_id):
+            unfound = tuple(i for i in state.hidden_unfound if i != target_id)
+            return state.model_copy(update={"hidden_unfound": unfound})
+        case BodySearched(target_id=target_id, item_ids=item_ids):
+            where = state.creatures[target_id].location
+            carried = {i: c for i, c in state.items_carried.items() if i not in item_ids}
+            floor = {**state.items_on_floor, **{i: where for i in item_ids}}
+            return state.model_copy(update={"items_carried": carried, "items_on_floor": floor})
         case QuestFlagSet(flag=flag):
             return state.model_copy(update={"quest_flags": (*state.quest_flags, flag)})
         case AttitudeChanged(target_id=target_id, attitude=attitude):

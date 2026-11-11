@@ -1,6 +1,7 @@
 """Scene context: only what the party can perceive (plan 3.5 step 1).
-Undiscovered locations are named only by direction, so neither interpreter nor
-narrator can leak or target what the party has not seen."""
+Undiscovered locations are named only by direction, and hidden items and exits
+the party has not found, and what a creature carries, are left out, so neither
+interpreter nor narrator can leak or target what the party has not seen."""
 
 from pydantic import BaseModel
 
@@ -74,6 +75,7 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
                 locked=e.id in state.locked_exits,
             )
             for e in location.exits
+            if e.id not in state.hidden_unfound
         ],
         creatures=[
             SceneCreature(
@@ -85,7 +87,7 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
         items=[
             SceneItem(item_id=item_id, name=adventure.item(item_id).name)
             for item_id, where in state.items_on_floor.items()
-            if where == location.id
+            if where == location.id and item_id not in state.hidden_unfound
         ],
         party=[
             ScenePartyMember(

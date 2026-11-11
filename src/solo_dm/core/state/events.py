@@ -110,6 +110,22 @@ class ItemTaken(Event):
     item_id: str
 
 
+class HiddenFound(Event):
+    """A hidden item or exit is found: by passive Perception on entering, or by a search."""
+
+    type: Literal["hidden_found"] = "hidden_found"
+    target_id: str
+    method: Literal["passive", "search"]
+
+
+class BodySearched(Event):
+    """A dead creature is searched; what it carried now lies in its location."""
+
+    type: Literal["body_searched"] = "body_searched"
+    target_id: str
+    item_ids: list[str]
+
+
 class QuestFlagSet(Event):
     type: Literal["quest_flag_set"] = "quest_flag_set"
     flag: str

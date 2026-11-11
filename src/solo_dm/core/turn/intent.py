@@ -9,7 +9,7 @@ from solo_dm.core.state.models import Ability
 
 Action = Literal[
     "move", "attack", "take", "use_item", "open", "unlock", "talk", "ability_check", "look",
-    "other",
+    "search", "other",
 ]
 
 

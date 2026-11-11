@@ -16,7 +16,8 @@ VERBS = [
     ("unlock", ["unlock", "pick the lock", "pick lock", "pick", r"use\b.*\bkey"]),
     ("attack", ["attack", "hit", "fight", "kill", "strike", "stab"]),
     ("open", ["open"]),
-    ("look", ["look", "examine", "search"]),
+    ("search", ["search", "loot", "frisk", "rummage"]),
+    ("look", ["look", "examine"]),
     ("move", ["go", "move", "walk", "head", "run", "enter", "north", "south", "east", "west"]),
 ]
 STOPWORDS = {"the", "a", "an", "to", "at", "of"}
@@ -43,6 +44,10 @@ class FakeLLM(LLMPort):
             return outcome.blocked
         names = _names(scene)
         lines = [_describe(e, names, scene) for e in outcome.events]
+        if outcome.intent.action == "search" and not any(
+            e.type in ("hidden_found", "body_searched") for e in outcome.events
+        ):
+            lines.append("You find nothing.")
         return " ".join(line for line in lines if line) or "Nothing much happens."
 
 
@@ -60,6 +65,13 @@ def _target(action: str, words: set[str], scene: SceneContext) -> str | None:
         found = [c.creature_id for c in alive if _matches(words, c.creature_id, c.name)]
         if not found and len(alive) == 1:
             found = [alive[0].creature_id]
+    elif action == "search":
+        # "search" alone searches the room; "search the goblin" or "search the
+        # body" searches a creature (resolution refuses a living one).
+        found = [c.creature_id for c in scene.creatures if _matches(words, c.creature_id, c.name)]
+        dead = [c.creature_id for c in scene.creatures if not c.alive]
+        if not found and words & {"body", "corpse"} and len(dead) == 1:
+            found = dead
     elif action == "take":
         found = [i.item_id for i in scene.items if _matches(words, i.item_id, i.name)]
     else:
@@ -94,12 +106,25 @@ def _describe(event, names: dict[str, str], scene: SceneContext) -> str:
             return f"{names[event.target_id]} falls."
         case "combat_ended":
             return "The fight is over."
+        case "check_rolled" if event.skill == "perception":
+            # No DC: it would tell whether anything is hidden here.
+            return f"{actor} searches (rolls {event.total})."
         case "check_rolled":
             return f"{actor} tries ({event.total} vs DC {event.dc}): " + (
                 "success." if event.success else "failure."
             )
         case "door_unlocked":
             return "The lock clicks open."
+        case "hidden_found":
+            exit_ = next((e for e in scene.exits if e.exit_id == event.target_id), None)
+            thing = f"a hidden way {exit_.direction}" if exit_ else f"the {names[event.target_id]}"
+            verb = "notice" if event.method == "passive" else "find"
+            return f"You {verb} {thing}."
+        case "body_searched":
+            body = names[event.target_id]
+            if not event.item_ids:
+                return f"You find nothing on the {body}."
+            return f"On the {body} you find: " + ", ".join(names[i] for i in event.item_ids) + "."
         case "item_taken":
             return f"{actor} takes the {names[event.item_id]}."
         case "adventure_won":
