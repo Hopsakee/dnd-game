@@ -8,10 +8,13 @@ from solo_dm.core.ports import LLMPort
 from solo_dm.core.turn.outcome import TurnOutcome
 from solo_dm.core.turn.scene import SceneContext
 
+# Checked in order, and each entry is a regex: "take" comes before "unlock" so
+# that "pick up the key" is not read as "pick the lock", and "use ... key" means
+# unlocking, the only thing a key does in this engine.
 VERBS = [
-    ("unlock", ["unlock", "pick the lock", "pick lock", "pick"]),
-    ("attack", ["attack", "hit", "fight", "kill", "strike", "stab"]),
     ("take", ["take", "grab", "get", "pick up"]),
+    ("unlock", ["unlock", "pick the lock", "pick lock", "pick", r"use\b.*\bkey"]),
+    ("attack", ["attack", "hit", "fight", "kill", "strike", "stab"]),
     ("open", ["open"]),
     ("look", ["look", "examine", "search"]),
     ("move", ["go", "move", "walk", "head", "run", "enter", "north", "south", "east", "west"]),
