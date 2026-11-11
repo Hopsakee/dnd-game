@@ -1,0 +1,100 @@
+"""The turn pipeline (plan 3.5): interpret -> validate -> resolve -> apply ->
+narrate, with a turn log. Persistence of the log arrives in M4."""
+
+from pydantic import BaseModel, ValidationError
+
+from solo_dm.core.adventure.schema import Adventure
+from solo_dm.core.ports import DicePort, LLMPort
+from solo_dm.core.state.apply import apply_events
+from solo_dm.core.state.events import Event
+from solo_dm.core.state.models import GameState
+from solo_dm.core.turn.intent import Intent
+from solo_dm.core.turn.outcome import TurnOutcome
+from solo_dm.core.turn.resolve import resolve_intent
+from solo_dm.core.turn.scene import SceneContext, build_scene
+
+NOT_UNDERSTOOD = "I did not understand that. What do you want to do?"
+COMPOUND_NOTE = "(Only the first action was done.)"
+
+
+class TurnRecord(BaseModel):
+    turn_number: int
+    actor_id: str
+    player_id: str
+    player_input: str
+    intent: Intent | None
+    validation_error: str | None
+    events: list[Event]
+    narration: str
+    fallback: bool = False
+    compound: bool = False
+    flag_note: str | None = None
+
+
+class GameSession:
+    def __init__(
+        self, adventure: Adventure, state: GameState, llm: LLMPort, dice: DicePort
+    ) -> None:
+        self.adventure = adventure
+        self.state = state
+        self._llm = llm
+        self._dice = dice
+        self.turns: list[TurnRecord] = []
+
+    def scene(self) -> SceneContext:
+        return build_scene(self.state, self.adventure)
+
+    def play_turn(self, actor_id: str, player_input: str) -> TurnRecord:
+        scene = self.scene()
+        intent, error = self._interpret(player_input, scene)
+        if intent is None:
+            return self._record(actor_id, player_input, None, error, [], NOT_UNDERSTOOD)
+        if intent.confidence == "low":
+            question = f"Do you mean: {intent.approach or intent.action}?"
+            return self._record(actor_id, player_input, intent, None, [], question)
+
+        resolution = resolve_intent(self.state, self.adventure, actor_id, intent, self._dice)
+        self.state = apply_events(self.state, resolution.events)
+        outcome = TurnOutcome(
+            actor_id=actor_id, intent=intent, events=resolution.events,
+            blocked=resolution.blocked,
+        )
+        narration = self._llm.narrate(outcome, self.scene())
+        if intent.compound:
+            narration = f"{narration} {COMPOUND_NOTE}"
+        return self._record(actor_id, player_input, intent, None, resolution.events, narration)
+
+    def flag_last_turn(self, note: str) -> None:
+        last = self.turns[-1]
+        self.turns[-1] = last.model_copy(update={"flag_note": note})
+
+    def _interpret(self, player_input: str, scene: SceneContext):
+        error = None
+        for _ in range(2):  # one retry with the validation error
+            raw = self._llm.interpret(player_input, scene, error)
+            try:
+                intent = Intent.model_validate(raw)
+            except ValidationError as invalid:
+                error = str(invalid)
+                continue
+            known = scene.valid_ids()
+            unknown = [i for i in (intent.target_id, intent.item_id) if i and i not in known]
+            if not unknown:
+                return intent, None
+            error = f"unknown ids {unknown}; choose from {sorted(known)}"
+        return None, error
+
+    def _record(self, actor_id, player_input, intent, error, events, narration) -> TurnRecord:
+        record = TurnRecord(
+            turn_number=len(self.turns) + 1,
+            actor_id=actor_id,
+            player_id=self.state.party[actor_id].player_id,
+            player_input=player_input,
+            intent=intent,
+            validation_error=error,
+            events=events,
+            narration=narration,
+            compound=bool(intent and intent.compound),
+        )
+        self.turns.append(record)
+        return record

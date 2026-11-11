@@ -7,23 +7,13 @@ from pydantic import BaseModel
 
 from solo_dm.core.state.models import (
     AbilityScores,
-    AttackProfile,
     Attitude,
     Character,
+    CreatureStatBlock,
     CreatureState,
     Weapon,
+    creature_from_stat_block,
 )
-
-
-class CreatureStatBlock(BaseModel):
-    stat_block_id: str
-    name: str
-    armor_class: int
-    hit_points: int
-    initiative_bonus: int
-    abilities: AbilityScores
-    attacks: list[AttackProfile]
-    not_implemented: list[str] = []
 
 
 class CharacterTemplate(BaseModel):
@@ -46,20 +36,13 @@ class YamlSrdCatalog:
     def creature(
         self, stat_block_id: str, creature_id: str, location: str, attitude: Attitude
     ) -> CreatureState:
-        block = CreatureStatBlock.model_validate(
-            self._load(self._root / "creatures" / f"{stat_block_id}.yaml")
+        return creature_from_stat_block(
+            self.stat_block(stat_block_id), creature_id, location, attitude
         )
-        return CreatureState(
-            creature_id=creature_id,
-            name=block.name,
-            srd_ref=block.stat_block_id,
-            location=location,
-            attitude=attitude,
-            armor_class=block.armor_class,
-            max_hp=block.hit_points,
-            hp=block.hit_points,
-            initiative_bonus=block.initiative_bonus,
-            attacks=tuple(block.attacks),
+
+    def stat_block(self, stat_block_id: str) -> CreatureStatBlock:
+        return CreatureStatBlock.model_validate(
+            self._load(self._root / "creatures" / f"{stat_block_id}.yaml")
         )
 
     def premade_character(self, template_id: str, character_id: str, player_id: str) -> Character:

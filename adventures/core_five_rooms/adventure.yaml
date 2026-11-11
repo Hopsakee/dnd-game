@@ -1,0 +1,72 @@
+# Smoke-test adventure: must always play from start to win (plan 6).
+id: core_five_rooms
+title: The Amulet of the Sunken Shrine
+start_location: entrance
+win_condition:
+  flag: amulet_retrieved
+
+locations:
+  - id: entrance
+    name: Mossy Entrance
+    description: >
+      Damp stone stairs lead down from the hillside. A rusted gate stands open to the north.
+    exits:
+      - {id: entrance_to_hall, to: hall, direction: north}
+    tags: [shrine]
+
+  - id: hall
+    name: Pillared Hall
+    description: >
+      Four cracked pillars hold up a low ceiling. Doorways lead east and west; to the
+      north a heavy iron-bound door bears a keyhole shaped like a sun.
+    exits:
+      - {id: hall_to_entrance, to: entrance, direction: south}
+      - {id: hall_to_guard_room, to: guard_room, direction: east}
+      - {id: hall_to_storeroom, to: storeroom, direction: west}
+      - {id: hall_to_shrine, to: shrine, direction: north}
+    tags: [shrine]
+
+  - id: guard_room
+    name: Guard Room
+    description: >
+      A cramped room with a smouldering brazier, a stool and gnawed bones on the floor.
+    exits:
+      - {id: guard_room_to_hall, to: hall, direction: west}
+    tags: [goblin]
+
+  - id: storeroom
+    name: Collapsed Storeroom
+    description: >
+      Rotten crates and broken jars. Part of the ceiling has come down in one corner.
+    exits:
+      - {id: storeroom_to_hall, to: hall, direction: east}
+
+  - id: shrine
+    name: Sunken Shrine
+    description: >
+      Water covers the floor ankle-deep. On a stone altar lies an amulet that glows faintly.
+    exits:
+      - {id: shrine_to_hall, to: hall, direction: south}
+    tags: [shrine]
+
+entities:
+  - id: goblin_scout
+    srd_ref: goblin_warrior
+    location: guard_room
+    attitude: hostile
+    tags: [goblin]
+
+items:
+  - {id: iron_key, name: Iron Key, location: guard_room}
+  - {id: silver_chalice, name: Silver Chalice, location: storeroom}
+  - id: sunken_amulet
+    name: Sunken Amulet
+    location: shrine
+    on_take:
+      set_flag: amulet_retrieved
+
+locks:
+  - exit: hall_to_shrine
+    locked: true
+    key: iron_key
+    pick_dc: 15

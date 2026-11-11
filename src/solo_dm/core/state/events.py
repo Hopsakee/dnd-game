@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from solo_dm.core.state.models import Ability
+from solo_dm.core.state.models import Ability, Attitude
 
 
 class Event(BaseModel):
@@ -81,9 +81,45 @@ class TurnStarted(Event):
 
 class CombatEnded(Event):
     type: Literal["combat_ended"] = "combat_ended"
-    reason: Literal["hostiles_defeated", "party_defeated"]
+    reason: Literal["hostiles_defeated", "party_defeated", "party_left"]
 
 
 class AdventureLost(Event):
     type: Literal["adventure_lost"] = "adventure_lost"
     reason: str
+
+
+class MovedTo(Event):
+    type: Literal["moved_to"] = "moved_to"
+    location_id: str
+
+
+class LocationDiscovered(Event):
+    type: Literal["location_discovered"] = "location_discovered"
+    location_id: str
+
+
+class DoorUnlocked(Event):
+    type: Literal["door_unlocked"] = "door_unlocked"
+    exit_id: str
+    method: Literal["key", "picked"]
+
+
+class ItemTaken(Event):
+    type: Literal["item_taken"] = "item_taken"
+    item_id: str
+
+
+class QuestFlagSet(Event):
+    type: Literal["quest_flag_set"] = "quest_flag_set"
+    flag: str
+
+
+class AttitudeChanged(Event):
+    type: Literal["attitude_changed"] = "attitude_changed"
+    target_id: str
+    attitude: Attitude
+
+
+class AdventureWon(Event):
+    type: Literal["adventure_won"] = "adventure_won"

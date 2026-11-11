@@ -1,0 +1,18 @@
+# Scenario: one hostile creature; combat starts on entering, ends by winning or losing.
+id: goblin_fight
+title: Goblin Fight
+start_location: path
+win_condition: {flag: trophy_taken}
+locations:
+  - id: path
+    name: Forest Path
+    description: A muddy path. A clearing opens to the east.
+    exits: [{id: path_to_clearing, to: clearing, direction: east}]
+  - id: clearing
+    name: Clearing
+    description: A trampled clearing around a crude totem.
+    exits: [{id: clearing_to_path, to: path, direction: west}]
+entities:
+  - {id: goblin, srd_ref: goblin_warrior, location: clearing, attitude: hostile}
+items:
+  - {id: totem, name: Goblin Totem, location: clearing, on_take: {set_flag: trophy_taken}}

@@ -1,0 +1,19 @@
+# Scenario: a locked door opened with its key or by picking the lock (DEX vs DC).
+id: locked_door
+title: Locked Door
+start_location: corridor
+win_condition: {flag: vault_entered}
+locations:
+  - id: corridor
+    name: Corridor
+    description: A short corridor. A brass key hangs on a hook; a locked door is to the north.
+    exits: [{id: corridor_to_vault, to: vault, direction: north}]
+  - id: vault
+    name: Vault
+    description: A small vault with a velvet token on a shelf.
+    exits: [{id: vault_to_corridor, to: corridor, direction: south}]
+items:
+  - {id: brass_key, name: Brass Key, location: corridor}
+  - {id: velvet_token, name: Velvet Token, location: vault, on_take: {set_flag: vault_entered}}
+locks:
+  - {exit: corridor_to_vault, key: brass_key, pick_dc: 15}
