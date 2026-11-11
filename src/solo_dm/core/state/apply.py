@@ -5,12 +5,19 @@ from collections.abc import Iterable
 from solo_dm.core.state.combatants import hp_of
 from solo_dm.core.state.events import (
     AdventureLost,
+    AdventureWon,
+    AttitudeChanged,
     CharacterDefeated,
     CombatEnded,
     CombatStarted,
     CreatureDied,
     DamageDealt,
+    DoorUnlocked,
     Event,
+    ItemTaken,
+    LocationDiscovered,
+    MovedTo,
+    QuestFlagSet,
     TurnStarted,
 )
 from solo_dm.core.state.models import GameState
@@ -39,6 +46,25 @@ def apply_event(state: GameState, event: Event) -> GameState:
             )
         case AdventureLost():
             return state.model_copy(update={"outcome": "lost"})
+        case MovedTo(location_id=location_id):
+            return state.model_copy(update={"party_location": location_id})
+        case LocationDiscovered(location_id=location_id):
+            discovered = (*state.discovered_locations, location_id)
+            return state.model_copy(update={"discovered_locations": discovered})
+        case DoorUnlocked(exit_id=exit_id):
+            locked = tuple(e for e in state.locked_exits if e != exit_id)
+            return state.model_copy(update={"locked_exits": locked})
+        case ItemTaken(actor_id=actor_id, item_id=item_id):
+            floor = {i: loc for i, loc in state.items_on_floor.items() if i != item_id}
+            holder = state.party[actor_id]
+            state = _update_combatant(state, actor_id, inventory=(*holder.inventory, item_id))
+            return state.model_copy(update={"items_on_floor": floor})
+        case QuestFlagSet(flag=flag):
+            return state.model_copy(update={"quest_flags": (*state.quest_flags, flag)})
+        case AttitudeChanged(target_id=target_id, attitude=attitude):
+            return _update_combatant(state, target_id, attitude=attitude)
+        case AdventureWon():
+            return state.model_copy(update={"outcome": "won"})
         case _:
             return state
 

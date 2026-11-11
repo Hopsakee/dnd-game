@@ -7,9 +7,17 @@ milestones.
 
 ## Status
 
-M1 (core skeleton): game state with a party, events and `apply_event`, dice,
-ability checks, attacks, damage, creature death and combat rounds. Nothing to
-play yet; `solo-dm play` arrives in M2.
+M2: the five-room adventure `core_five_rooms` plays in the terminal with a fake
+model (a keyword interpreter and plain narration; the real model arrives in M3):
+
+```bash
+uv run solo-dm play            # random dice
+uv run solo-dm play --seed 0   # reproducible game
+uv run solo-dm play --adventure scenarios/locked_door
+```
+
+Try `go north`, `attack goblin`, `take key`, `unlock north`, and the built-in
+commands `inv`, `hp`, `look`, `map`, `flag <note>`, `help`, `quit`.
 
 ## Commands
 
@@ -29,6 +37,7 @@ development box, goes in `.env.solo_dm` (gitignored) as `ANTHROPIC_API_KEY=...`.
   `tests/test_architecture.py` fails on any other import.
 - `src/solo_dm/infrastructure/`: adapters (dice, SRD data, settings).
 - `srd/`: SRD 5.2 data the engine uses, as YAML.
+- `adventures/`: `core_five_rooms` (smoke test) and one scenario per mechanic.
 
 ## Python version
 

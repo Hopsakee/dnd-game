@@ -85,3 +85,37 @@ class GameState(FrozenModel):
     combat_round: int = 0
     in_combat: bool = False
     outcome: Literal["playing", "won", "lost"] = "playing"
+    discovered_locations: tuple[str, ...] = ()
+    items_on_floor: dict[str, str] = {}  # item_id -> location_id; held items are in inventory
+    locked_exits: tuple[str, ...] = ()
+    quest_flags: tuple[str, ...] = ()
+
+
+class CreatureStatBlock(FrozenModel):
+    """SRD reference data for a creature kind."""
+
+    stat_block_id: str
+    name: str
+    armor_class: int
+    hit_points: int
+    initiative_bonus: int
+    abilities: AbilityScores
+    attacks: tuple[AttackProfile, ...]
+    not_implemented: tuple[str, ...] = ()
+
+
+def creature_from_stat_block(
+    block: CreatureStatBlock, creature_id: str, location: str, attitude: Attitude
+) -> CreatureState:
+    return CreatureState(
+        creature_id=creature_id,
+        name=block.name,
+        srd_ref=block.stat_block_id,
+        location=location,
+        attitude=attitude,
+        armor_class=block.armor_class,
+        max_hp=block.hit_points,
+        hp=block.hit_points,
+        initiative_bonus=block.initiative_bonus,
+        attacks=block.attacks,
+    )
