@@ -78,3 +78,16 @@ def test_builtin_commands_answer_without_a_model_turn():
     assert "* Pillared Hall: south -> Mossy Entrance" in text
     assert "east (unexplored)" in text and "north (unexplored, locked)" in text
     assert "Saving arrives with campaigns in M4." in text
+
+
+
+def test_entering_a_room_shows_it_without_look():
+    _, _, _, text = play("core_five_rooms", ["go north"])
+    after_move = text.split("You enter the Pillared Hall.", 1)[1]
+    assert "Four cracked pillars hold up a low ceiling." in after_move
+    assert "Exits:" in after_move
+
+
+def test_a_turn_without_moving_does_not_repeat_the_room():
+    _, _, _, text = play("core_five_rooms", ["attack nothing"])
+    assert text.count("Damp stone stairs lead down") == 1
