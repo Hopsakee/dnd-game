@@ -78,3 +78,16 @@ def test_builtin_commands_answer_without_a_model_turn():
     assert "* Pillared Hall: south -> Mossy Entrance" in text
     assert "east (unexplored)" in text and "north (unexplored, locked)" in text
     assert "Saving arrives with campaigns in M4." in text
+
+
+def test_pick_up_takes_the_key_instead_of_picking_a_lock():
+    _, events, game, _ = play("scenarios/locked_door", ["pick up key"])
+    assert "item_taken" in events
+    assert "door_unlocked" not in events
+
+
+def test_use_key_unlocks_the_locked_door():
+    lines = ["take key", "use key", "go north", "take token"]
+    outcome, events, _, _ = play("scenarios/locked_door", lines)
+    assert "door_unlocked" in events
+    assert outcome == "won"
