@@ -5,6 +5,12 @@ from solo_dm.core.state.events import CheckRolled
 from solo_dm.core.state.models import Ability, Character
 
 
+def passive_perception(character: Character) -> int:
+    """10 + Wisdom modifier, + proficiency bonus if proficient in Perception."""
+    bonus = character.proficiency_bonus if "perception" in character.skill_proficiencies else 0
+    return 10 + character.abilities.modifier("WIS") + bonus
+
+
 def ability_check(
     character: Character, ability: Ability, skill: str | None, dc: int, dice: DicePort
 ) -> CheckRolled:

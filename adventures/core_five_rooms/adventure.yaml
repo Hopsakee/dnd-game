@@ -57,8 +57,13 @@ entities:
     tags: [goblin]
 
 items:
-  - {id: iron_key, name: Iron Key, location: guard_room}
-  - {id: silver_chalice, name: Silver Chalice, location: storeroom}
+  # The goblin carries the key: kill it, then search the body.
+  - {id: iron_key, name: Iron Key, carried_by: goblin_scout}
+  # Behind the fallen ceiling. DC 15 is above the Fighter's passive Perception
+  # (13), so only an active search finds it.
+  - {id: silver_chalice, name: Silver Chalice, location: storeroom, hidden: {dc: 15}}
+  # At the foot of a pillar. DC 11: the Fighter notices it on entering.
+  - {id: tarnished_ring, name: Tarnished Ring, location: hall, hidden: {dc: 11}}
   - id: sunken_amulet
     name: Sunken Amulet
     location: shrine

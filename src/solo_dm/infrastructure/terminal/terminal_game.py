@@ -9,7 +9,8 @@ from solo_dm.core.turn.session import GameSession
 
 HELP = (
     "Commands: inv, hp, look, map, flag <note>, help, save, quit. "
-    "Anything else is an action, e.g. 'go north', 'attack goblin', 'take key'."
+    "Anything else is an action, e.g. 'go north', 'attack goblin', 'search', "
+    "'search goblin', 'take key'."
 )
 
 
@@ -93,7 +94,7 @@ class TerminalGame:
             links = ", ".join(
                 f"{e.direction} -> {adventure.location(e.to).name}"
                 for e in location.exits
-                if e.to in state.discovered_locations
+                if e.to in state.discovered_locations and e.id not in state.hidden_unfound
             )
             marker = "* " if location_id == state.party_location else "  "
             lines.append(f"{marker}{location.name}: {links or 'no known connections'}")

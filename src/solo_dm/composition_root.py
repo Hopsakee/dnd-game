@@ -46,7 +46,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "play":
         dice = SeededDice(args.seed) if args.seed is not None else RandomDice()
         console = Console()
-        console.print("[dim](fake model: try 'go north', 'attack goblin', 'take key')[/dim]")
+        console.print(
+            "[dim](fake model: try 'go north', 'attack goblin', 'search', 'take key')[/dim]"
+        )
         outcome = build_terminal_game(args.adventure, dice, FakeLLM(), console).run(
             lambda: input("> ")
         )

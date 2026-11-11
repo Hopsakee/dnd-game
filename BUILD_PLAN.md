@@ -144,7 +144,8 @@ player input (always tagged with the acting character_id — set by Python
              - invalid → one retry with the validation error, then a
                clarifying question to the player (logged)
         4. Resolve in core: check legality against state and adventure,
-           pick the rule (move / attack / take / use / open / talk / check),
+           pick the rule (move / attack / take / use / open / talk / search /
+           check),
            roll via DicePort, produce events
              - no specific rule → ability-check fallback
              - illegal action (e.g. walking through a locked door) → a
@@ -170,7 +171,7 @@ player input (always tagged with the acting character_id — set by Python
 
 The interpreter returns one intent per turn. The acting character (`actor_id`) is attached by Python, not produced by the model.
 
-- `action`: one of `move`, `attack`, `take`, `use_item`, `open`, `unlock`, `talk`, `ability_check`, `look`, `other`
+- `action`: one of `move`, `attack`, `take`, `use_item`, `open`, `unlock`, `talk`, `ability_check`, `look`, `search`, `other`
 - `target_id`: id of an entity/exit/item from the scene context (must exist; validated)
 - `item_id`: optional
 - `ability`: for `ability_check` — STR/DEX/CON/INT/WIS/CHA, optional skill
@@ -266,7 +267,27 @@ locks:
     pick_dc: 15
 ```
 
-Rule: every id is unique within the adventure, and every reference (exit target, key, location) must resolve. The loader validates this and fails loudly.
+Hidden things and loot (M2.5):
+
+```yaml
+items:
+  - {id: iron_key, name: Iron Key, carried_by: goblin_scout}      # on the body
+  - {id: silver_chalice, name: Silver Chalice, location: storeroom,
+     hidden: {dc: 15}}
+locations:
+  - id: storeroom
+    exits:
+      - {id: storeroom_to_crypt, to: crypt, direction: down, hidden: {dc: 13}}
+```
+
+- An item has exactly one of `location` and `carried_by` (an entity id). A carried item cannot be hidden.
+- `hidden: {dc: N}` on an item or exit keeps it out of the scene context until found:
+  - **Passive:** on entering a location (and at the start), the party member with the best passive Perception (10 + WIS modifier + proficiency bonus if proficient in Perception) finds every hidden thing there whose DC it meets. No roll.
+  - **Active:** the `search` action without a target is one Wisdom (Perception) check; it finds every unfound hidden thing in the location whose DC the total meets. It can be retried, each try a turn. With nothing hidden it still rolls, so a search never reveals that a room is empty.
+  - **Bodies:** `search` targeting a dead creature needs no roll; what it carried now lies in its location. A living creature cannot be searched.
+- Events: `HiddenFound` (target, method `passive` or `search`), `BodySearched` (target, item ids).
+
+Rule: every id is unique within the adventure, and every reference (exit target, key, location, carried_by) must resolve. The loader validates this and fails loudly.
 
 ### 4.2 Campaign SQLite schema (starting point)
 
@@ -356,10 +377,23 @@ Each milestone ends with tests passing and something Jelle can actually try. Sto
 
 **Done when:** `uv run solo-dm play` runs the adventure with the fake model; the scripted playthroughs pass.
 
+### M2.5 — Hidden things and searching
+Added 2026-11-11 from Jelle's first play test ("I immediately see everything in a room; I cannot search a dead goblin"). Before M3, because M3's prompts are written against the scene context, and before M4, because it adds event types.
+- Adventure schema: `hidden: {dc}` on items and exits; `carried_by` on items (4.1).
+- Passive Perception on entering a location and at the start; the `search` action for a location or a dead creature (4.1).
+- Scene context leaves out unfound hidden things and carried items; tested for both interpreter and narrator input.
+- `core_five_rooms`: the iron key is on the goblin; the silver chalice is hidden (DC 15, above the Fighter's passive 13); a tarnished ring is found passively (DC 11). Picking the lock stays as the other way through.
+- `FakeLLM`: `search`, `search goblin`, `search the body`.
+
+**Done when:** the playthroughs (win via the goblin's body, the hidden-things route) and the scene-context test pass; `uv run solo-dm play` lets Jelle search the room and the goblin.
+
+Out of scope: traps, secret-door mechanisms, hidden creatures and Stealth, time cost of searching, a separate Investigation rule.
+
 ### M3 — Real model
 - `AnthropicLLM` adapter (Haiku) for interpreter and narrator; prompts in their own files.
 - Intent validation with one retry, then a clarifying question.
 - Ability-check fallback with Python-set DC.
+- Narrator prompt: never state the DC of a search (Perception) check; it would tell whether anything is hidden (M2.5).
 - Cost logging and `uv run solo-dm cost`.
 - Live tests (`uv run pytest -m live`).
 

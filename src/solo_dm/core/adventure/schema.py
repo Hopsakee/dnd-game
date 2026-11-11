@@ -3,7 +3,7 @@ is duplicated or a reference does not resolve."""
 
 from collections import Counter
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from solo_dm.core.state.models import Attitude
 
@@ -12,10 +12,17 @@ class AdventureModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
+class Hidden(AdventureModel):
+    """Found by passive Perception on entering, or by a search (WIS check) vs dc."""
+
+    dc: int = Field(ge=1)
+
+
 class Exit(AdventureModel):
     id: str
     to: str
     direction: str
+    hidden: Hidden | None = None
 
 
 class Location(AdventureModel):
@@ -39,9 +46,14 @@ class OnTake(AdventureModel):
 
 
 class ItemPlacement(AdventureModel):
+    """An item lies in a location or is carried by an entity (dropped on its body
+    once the body is searched). Exactly one of location and carried_by is set."""
+
     id: str
     name: str
-    location: str
+    location: str | None = None
+    carried_by: str | None = None
+    hidden: Hidden | None = None
     on_take: OnTake | None = None
 
 
@@ -85,6 +97,13 @@ class Adventure(AdventureModel):
     def lock(self, exit_id: str) -> Lock | None:
         return next((lock for lock in self.locks if lock.exit == exit_id), None)
 
+    def hidden_in(self, location_id: str) -> list[tuple[str, int]]:
+        """(id, dc) of every hidden item and exit placed in this location."""
+        items = [(i.id, i.hidden.dc) for i in self.items
+                 if i.hidden and i.location == location_id]
+        exits = [(e.id, e.hidden.dc) for e in self.location(location_id).exits if e.hidden]
+        return items + exits
+
 
 def _reference_problems(adventure: Adventure) -> list[str]:
     locations = {loc.id for loc in adventure.locations}
@@ -105,8 +124,18 @@ def _reference_problems(adventure: Adventure) -> list[str]:
             for e in loc.exits
             if e.to not in locations
         ]
+    entities = {e.id for e in adventure.entities}
+    for item in adventure.items:
+        if item.location is None and item.carried_by is None:
+            problems.append(f"'{item.id}' needs a location or carried_by")
+        elif item.location is not None and item.carried_by is not None:
+            problems.append(f"'{item.id}' has both a location and carried_by")
+        elif item.carried_by is not None and item.carried_by not in entities:
+            problems.append(f"'{item.id}' is carried by unknown entity '{item.carried_by}'")
+        if item.carried_by is not None and item.hidden is not None:
+            problems.append(f"'{item.id}' is carried, so it cannot be hidden")
     for placed in (*adventure.entities, *adventure.items):
-        if placed.location not in locations:
+        if placed.location is not None and placed.location not in locations:
             problems.append(f"'{placed.id}' is in unknown location '{placed.location}'")
     for lock in adventure.locks:
         if lock.exit not in exits:

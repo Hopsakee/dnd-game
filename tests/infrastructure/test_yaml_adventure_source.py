@@ -22,6 +22,11 @@ def test_core_five_rooms_has_the_planned_shape():
     (lock,) = adventure.locks
     assert lock.key is not None and lock.pick_dc is not None
     assert adventure.win_condition.flag == "amulet_retrieved"
+    # M2.5: the key is on the goblin; the chalice needs a search (DC above the
+    # Fighter's passive 13); the ring is found passively (DC at or below 13).
+    assert adventure.item("iron_key").carried_by == "goblin_scout"
+    assert adventure.item("silver_chalice").hidden.dc > 13
+    assert adventure.item("tarnished_ring").hidden.dc <= 13
 
 
 def test_a_broken_reference_names_the_file_and_the_problem(tmp_path):
