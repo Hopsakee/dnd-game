@@ -45,6 +45,31 @@ The project pins Python 3.12 because the development box has 3.12 and its wheel
 store holds `cp312` wheels. The code uses nothing newer than 3.12 and should run
 on 3.14 unchanged; switching is `.python-version` plus `uv lock`.
 
+## Where packages come from (box versus your own machine)
+
+`uv.lock` records which version of each package to install, and also where uv
+gets it from: the `source = { registry = ... }` line of each package.
+
+- On your own machine, uv downloads packages from PyPI (pypi.org), its default.
+- In the development box, uv cannot reach PyPI. It installs only from the box's
+  approved wheel store, `/opt/wheels`. So a lock written in the box records
+  `registry = "/opt/wheels"`, a folder that exists nowhere else.
+
+If `uv sync` on your own machine fails with
+`failed to query metadata of file /opt/wheels/...`, the lock was last written in
+the box. Delete the lock, lock again against PyPI, and sync. A plain `uv lock`
+is not enough: uv sees the old lock as still valid and keeps its sources.
+
+```bash
+rm uv.lock
+uv lock
+grep -c /opt/wheels uv.lock   # expect 0
+uv sync
+```
+
+That lock can be committed. For the same reason, a lock written in the box
+should not go into a pull request.
+
 ## Licence and attribution
 
 This work includes material from the System Reference Document 5.2 ("SRD 5.2")
