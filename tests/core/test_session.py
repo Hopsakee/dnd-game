@@ -35,7 +35,10 @@ def test_an_invalid_intent_is_retried_once_with_the_error_then_a_question_is_ask
     session = _session(llm)
     turn = session.play_turn("hero", "I boogie")
     assert turn.intent is None and turn.validation_error
-    assert turn.narration == "I did not understand that. What do you want to do?"
+    # The question names what can be done here, from the scene, with no model call.
+    assert turn.narration == (
+        "I did not understand that. Do you want to go east or go north, or something else?"
+    )
     assert llm.narrated == []
 
 
@@ -69,3 +72,11 @@ def test_flag_marks_the_last_turn():
     session.play_turn("hero", "look around")
     session.flag_last_turn("the narrator invented a door")
     assert session.turns[-1].flag_note == "the narrator invented a door"
+
+
+def test_the_clarifying_question_offers_the_creatures_and_items_here():
+    llm = ScriptedLLM([{"action": "move", "target_id": "hall_to_den"}, {}, {}])
+    session = _session(llm, faces=[1] * 10)
+    session.play_turn("hero", "go east")
+    question = session.play_turn("hero", "flibber").narration
+    assert "attack Goblin Warrior" in question and "take Iron Key" in question

@@ -21,6 +21,13 @@ VERBS = [
     ("move", ["go", "move", "walk", "head", "run", "enter", "north", "south", "east", "west"]),
 ]
 STOPWORDS = {"the", "a", "an", "to", "at", "of"}
+# Actions with no rule of their own become an ability check (plan 3.7): the
+# interpreter picks ability, skill and task category; Python sets the DC.
+CHECKS = [
+    (["persuade", "convince", "talk", "bribe", "charm"], "CHA", "persuasion"),
+    (["intimidate", "threaten"], "CHA", "intimidation"),
+    (["climb", "jump", "swim", "force", "break"], "STR", "athletics"),
+]
 
 
 class FakeLLM(LLMPort):
@@ -34,6 +41,11 @@ class FakeLLM(LLMPort):
             "other",
         )
         intent: dict[str, Any] = {"action": action, "approach": player_input}
+        check = next((c for c in CHECKS if action == "other" and words & set(c[0])), None)
+        if check:
+            action = "ability_check"
+            intent |= {"action": action, "ability": check[1], "skill": check[2],
+                       "task_category": "medium"}
         target = _target(action, words, scene)
         if target:
             intent["target_id"] = target
@@ -72,6 +84,9 @@ def _target(action: str, words: set[str], scene: SceneContext) -> str | None:
         dead = [c.creature_id for c in scene.creatures if not c.alive]
         if not found and words & {"body", "corpse"} and len(dead) == 1:
             found = dead
+    elif action == "ability_check":
+        found = [c.creature_id for c in scene.creatures
+                 if c.alive and _matches(words, c.creature_id, c.name)]
     elif action == "take":
         found = [i.item_id for i in scene.items if _matches(words, i.item_id, i.name)]
     else:
@@ -109,6 +124,8 @@ def _describe(event, names: dict[str, str], scene: SceneContext) -> str:
         case "check_rolled" if event.skill == "perception":
             # No DC: it would tell whether anything is hidden here.
             return f"{actor} searches (rolls {event.total})."
+        case "quest_flag_set":
+            return "That worked."
         case "check_rolled":
             return f"{actor} tries ({event.total} vs DC {event.dc}): " + (
                 "success." if event.success else "failure."

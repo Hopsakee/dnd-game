@@ -1,11 +1,17 @@
 # solo-dm settings. No secrets here: an API key, if any, goes in .env.solo_dm
 # (gitignored, outside the box only). See BUILD_PLAN.md 3.9.
 llm:
-  provider: anthropic
+  provider: anthropic       # anthropic | fake (the keyword model, no network, no cost)
   model: claude-haiku-5-5
-  base_url: null          # in the box: the credential broker's URL (set up before M3)
-  max_tokens: 1024
-  temperature: 0.7
+  # Where to send model calls. null: the URL in the environment variable below if
+  # it is set (in the box: the credential broker, which adds the key), otherwise
+  # api.anthropic.com with ANTHROPIC_API_KEY from .env.solo_dm.
+  base_url: null
+  base_url_env: ANTHROPIC_API_BASE
+  broker_auth_file: /run/broker/caller   # sent as X-Hoggle-Broker-Auth when present
+  # Per role. max_tokens counts thinking too. Haiku 5.5 takes no temperature.
+  interpreter: {max_tokens: 2048, effort: low}
+  narrator: {max_tokens: 4096, effort: medium}   # model: claude-sonnet-5-5 to try Sonnet
 paths:
   adventures: adventures
   srd: srd
@@ -13,4 +19,4 @@ paths:
   campaigns: campaigns
   llm_call_log: logs/llm_calls.jsonl
 cost:
-  daily_cap_usd: null     # refuse new model calls above this; null = no cap
+  daily_cap_usd: 1.00       # refuse new model calls above this; null = no cap

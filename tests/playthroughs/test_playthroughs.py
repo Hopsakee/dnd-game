@@ -107,3 +107,19 @@ def test_the_key_must_be_taken_from_the_goblins_body():
     lines = ["go north", "go east"] + ["attack goblin"] * 8 + ["take key"]
     _, _, game, _ = play("core_five_rooms", lines, seed=0)
     assert "iron_key" not in game.session.state.party["hero"].inventory
+
+
+def test_scenario_ability_check_fallback_wins_by_persuasion():
+    lines = ["climb the cliff", "persuade the gatekeeper", "persuade the gatekeeper"]
+    outcome, events, game, text = play("scenarios/ability_check", lines, seed=6)
+    assert outcome == "won"
+    assert all(turn.fallback for turn in game.session.turns)
+    assert {"cliff_climbed", "passage_granted"} <= set(game.session.state.quest_flags)
+    assert "You have won the adventure!" in text
+
+
+def test_scenario_ability_check_fallback_can_fail_and_change_nothing():
+    lines = ["persuade the gatekeeper"] * 3
+    outcome, events, game, _ = play("scenarios/ability_check", lines, seed=0)
+    assert outcome == "playing"
+    assert set(events) == {"check_rolled"} and game.session.state.quest_flags == ()

@@ -8,6 +8,7 @@ from solo_dm.core.adventure.schema import Adventure
 from solo_dm.core.ports import DicePort
 from solo_dm.core.rules.rules_attacks import character_attack, resolve_attack
 from solo_dm.core.rules.rules_checks import ability_check
+from solo_dm.core.rules.rules_difficulty import fallback_dc
 from solo_dm.core.state.apply import apply_events
 from solo_dm.core.state.events import (
     AdventureWon,
@@ -166,6 +167,28 @@ def _search_room(state, adventure, actor_id, dice) -> list[Event]:
     return [check, *found]
 
 
+def _ability_check(state, adventure, actor_id, intent, dice) -> list[Event]:
+    """The fallback (plan 3.7): Python sets the DC from the task category and the
+    target's attitude, rolls, and applies only consequences the adventure defines."""
+    if intent.ability is None:
+        raise Blocked("Which ability do you use for that?")
+    creature = state.creatures.get(intent.target_id or "")
+    dc = fallback_dc(intent.task_category, creature.attitude if creature else None)
+    check = ability_check(state.party[actor_id], intent.ability, intent.skill, dc, dice)
+    if not check.success:
+        return [check]
+    placed = adventure.entity(creature.creature_id) if creature else None
+    consequences = placed.checks if placed else adventure.location(state.party_location).checks
+    events: list[Event] = [check]
+    for consequence in consequences:
+        if consequence.ability == intent.ability and consequence.skill in (None, intent.skill):
+            flag = consequence.on_success.set_flag
+            events.append(QuestFlagSet(actor_id=actor_id, flag=flag))
+            if flag == adventure.win_condition.flag:
+                events.append(AdventureWon(actor_id=actor_id))
+    return events
+
+
 def _look(state, adventure, actor_id, intent, dice) -> list[Event]:
     return []
 
@@ -189,4 +212,5 @@ _ACTIONS = {
     "open": _open,
     "look": _look,
     "search": _search,
+    "ability_check": _ability_check,
 }

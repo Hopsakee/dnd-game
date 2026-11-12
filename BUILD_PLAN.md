@@ -202,7 +202,7 @@ The scene context sent to the interpreter lists valid ids, so the model picks fr
 
 ### 3.9 LLM adapter and cost control
 
-- Provider, model name, base URL, max tokens and temperature come from `settings.yaml`.
+- Provider, model name, base URL, and max tokens and effort per role (interpreter, narrator) come from `settings.yaml`. No temperature: Haiku 5.5 refuses a non-default one (changed in M3, 2026-11-12).
 - **Where the key lives.** Development runs in Jelle's box, which may hold no third-party key. There the adapter calls the Anthropic API through the host's credential broker, which adds the key; `settings.yaml` sets the broker's base URL and no key. Outside the box (e.g. on the Mac mini) the same adapter calls `api.anthropic.com` directly with the key from `.env.solo_dm`. One adapter, two settings; no code path differs.
 - Keep prompts provider-neutral; validate structured output with our own Pydantic schema rather than relying on provider-specific features.
 - Log every call to a local file: timestamp, role (interpreter/narrator), model, input tokens, output tokens, estimated cost.

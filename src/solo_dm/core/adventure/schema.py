@@ -5,7 +5,7 @@ from collections import Counter
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from solo_dm.core.state.models import Attitude
+from solo_dm.core.state.models import Ability, Attitude
 
 
 class AdventureModel(BaseModel):
@@ -16,6 +16,19 @@ class Hidden(AdventureModel):
     """Found by passive Perception on entering, or by a search (WIS check) vs dc."""
 
     dc: int = Field(ge=1)
+
+
+class SetFlag(AdventureModel):
+    set_flag: str
+
+
+class CheckConsequence(AdventureModel):
+    """What an ability-check fallback (plan 3.7) does here when the check succeeds.
+    Matches a check with this ability (and skill, when given)."""
+
+    ability: Ability
+    skill: str | None = None
+    on_success: SetFlag
 
 
 class Exit(AdventureModel):
@@ -31,6 +44,7 @@ class Location(AdventureModel):
     description: str
     exits: tuple[Exit, ...] = ()
     tags: tuple[str, ...] = ()
+    checks: tuple[CheckConsequence, ...] = ()
 
 
 class EntityPlacement(AdventureModel):
@@ -39,10 +53,11 @@ class EntityPlacement(AdventureModel):
     location: str
     attitude: Attitude
     tags: tuple[str, ...] = ()
+    checks: tuple[CheckConsequence, ...] = ()
 
 
-class OnTake(AdventureModel):
-    set_flag: str
+class OnTake(SetFlag):
+    pass
 
 
 class ItemPlacement(AdventureModel):
@@ -97,6 +112,9 @@ class Adventure(AdventureModel):
     def lock(self, exit_id: str) -> Lock | None:
         return next((lock for lock in self.locks if lock.exit == exit_id), None)
 
+    def entity(self, entity_id: str) -> EntityPlacement | None:
+        return next((e for e in self.entities if e.id == entity_id), None)
+
     def hidden_in(self, location_id: str) -> list[tuple[str, int]]:
         """(id, dc) of every hidden item and exit placed in this location."""
         items = [(i.id, i.hidden.dc) for i in self.items
@@ -142,7 +160,11 @@ def _reference_problems(adventure: Adventure) -> list[str]:
             problems.append(f"lock exit '{lock.exit}' is not an exit")
         if lock.key is not None and lock.key not in items:
             problems.append(f"lock key '{lock.key}' is not an item")
-    flags = {i.on_take.set_flag for i in adventure.items if i.on_take}
+    flags = {i.on_take.set_flag for i in adventure.items if i.on_take} | {
+        c.on_success.set_flag
+        for placed in (*adventure.locations, *adventure.entities)
+        for c in placed.checks
+    }
     if adventure.win_condition.flag not in flags:
         problems.append(f"win flag '{adventure.win_condition.flag}' is never set")
     return problems
