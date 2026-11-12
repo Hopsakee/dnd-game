@@ -13,7 +13,6 @@ from solo_dm.core.turn.outcome import TurnOutcome
 from solo_dm.core.turn.resolve import resolve_intent
 from solo_dm.core.turn.scene import SceneContext, build_scene
 
-NOT_UNDERSTOOD = "I did not understand that. What do you want to do?"
 COMPOUND_NOTE = "(Only the first action was done.)"
 
 
@@ -48,7 +47,7 @@ class GameSession:
         scene = self.scene()
         intent, error = self._interpret(player_input, scene)
         if intent is None:
-            return self._record(actor_id, player_input, None, error, [], NOT_UNDERSTOOD)
+            return self._record(actor_id, player_input, None, error, [], clarifying_question(scene))
         if intent.confidence == "low":
             question = f"Do you mean: {intent.approach or intent.action}?"
             return self._record(actor_id, player_input, intent, None, [], question)
@@ -95,6 +94,24 @@ class GameSession:
             events=events,
             narration=narration,
             compound=bool(intent and intent.compound),
+            fallback=bool(intent and intent.action == "ability_check"),
         )
         self.turns.append(record)
         return record
+
+
+def clarifying_question(scene: SceneContext) -> str:
+    """Asked after the retry also failed (plan 3.5 step 3): what can be done here,
+    built from the scene so it needs no model call and names nothing hidden."""
+    options = [f"go {e.direction}" for e in scene.exits]
+    for c in scene.creatures:
+        if not c.alive:
+            options.append(f"search the {c.name}")
+        elif c.attitude == "hostile":
+            options.append(f"attack {c.name}")
+        else:
+            options.append(f"talk to {c.name}")
+    options += [f"take {i.name}" for i in scene.items]
+    listed = " or ".join(options) if len(options) <= 2 else (
+        ", ".join(options[:-1]) + " or " + options[-1])
+    return f"I did not understand that. Do you want to {listed}, or something else?"

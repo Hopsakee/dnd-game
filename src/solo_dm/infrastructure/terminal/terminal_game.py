@@ -6,19 +6,27 @@ from collections.abc import Callable
 from rich.console import Console
 
 from solo_dm.core.turn.session import GameSession
+from solo_dm.infrastructure.llm.cost_log import LLMUnavailable
 
 HELP = (
-    "Commands: inv, hp, look, map, flag <note>, help, save, quit. "
+    "Commands: inv, hp, look, map, cost, flag <note>, help, save, quit. "
     "Anything else is an action, e.g. 'go north', 'attack goblin', 'search', "
     "'search goblin', 'take key'."
 )
 
 
 class TerminalGame:
-    def __init__(self, session: GameSession, actor_id: str, console: Console) -> None:
+    def __init__(
+        self,
+        session: GameSession,
+        actor_id: str,
+        console: Console,
+        spend: Callable[[], float] | None = None,
+    ) -> None:
         self.session = session
         self.actor_id = actor_id
         self.console = console
+        self._spend = spend  # this session's model spend in USD; None with the fake model
 
     def run(self, read_line: Callable[[], str]) -> str:
         self.console.print(f"[bold]{self.session.adventure.title}[/bold]")
@@ -30,6 +38,8 @@ class TerminalGame:
                 break
             if line and not self.handle(line):
                 break
+        if self._spend is not None:
+            self.console.print(f"This session: ${self._spend():.4f} in model calls.")
         return self.session.state.outcome
 
     def handle(self, line: str) -> bool:
@@ -42,6 +52,7 @@ class TerminalGame:
             "look": self._look,
             "map": self._map,
             "save": lambda: "Saving arrives with campaigns in M4.",
+            "cost": self._cost,
         }
         if command == "quit":
             return False
@@ -52,12 +63,25 @@ class TerminalGame:
             self.console.print(builtin[command]())
         else:
             location_before = self.session.state.party_location
-            self.console.print(self.session.play_turn(self.actor_id, line).narration)
+            try:
+                turn = self.session.play_turn(self.actor_id, line)
+            except LLMUnavailable as unavailable:
+                self.console.print(
+                    f"[red]The model could not be reached ({unavailable}). "
+                    "Nothing happened; try again.[/red]"
+                )
+                return True
+            self.console.print(turn.narration)
             # Entering a room shows it, from state rather than from the model, so
             # the exits and items are always right whichever model narrates.
             if self.session.state.party_location != location_before:
                 self.console.print(self._look())
         return True
+
+    def _cost(self) -> str:
+        if self._spend is None:
+            return "The fake model is playing: no model cost."
+        return f"This session: ${self._spend():.4f} in model calls. All time: uv run solo-dm cost"
 
     def _inventory(self) -> str:
         return "\n".join(

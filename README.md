@@ -25,17 +25,36 @@ M2.5 adds hidden things. On entering a room the party's best passive Perception
 exit whose DC it meets. `search` rolls Wisdom (Perception) for the rest and can
 be tried again. A dead creature's belongings appear when you search its body.
 
+M3: the real model. Claude Haiku 5.5 interprets free text into an intent and
+narrates the outcome Python decided. Anything without a rule of its own
+(persuading, climbing, forcing) becomes an ability check: the model picks the
+ability and how hard the task is, Python sets the DC and rolls, and only
+consequences written in the adventure change the game.
+
+```bash
+uv run solo-dm play                       # with Haiku (in the box: via the broker)
+uv run solo-dm play --fake                # the keyword model: no network, no cost
+uv run solo-dm play --adventure scenarios/ability_check
+uv run solo-dm cost                       # model spend per day and per campaign
+```
+
+In play, `cost` shows this session's spend, and quitting prints it. Every call
+is logged to `logs/llm_calls.jsonl` (tokens and estimated cost, no text);
+`settings.yaml` sets a daily cap (`cost.daily_cap_usd`).
+
 ## Commands
 
 ```bash
 uv run pytest            # unit tests and the core import rule
-uv run pytest -m live    # real-model tests (from M3; deselected by default)
+uv run pytest -m live    # real-model tests (deselected by default; costs a little)
 uv run ruff check
 uv run solo-dm --help
 ```
 
-Settings live in `settings.yaml`. An API key, only when running outside the
-development box, goes in `.env.solo_dm` (gitignored) as `ANTHROPIC_API_KEY=...`.
+Settings live in `settings.yaml`. In the development box, model calls go to the
+credential broker named by `$ANTHROPIC_API_BASE`, which adds the key. Anywhere
+else, put the key in `.env.solo_dm` (gitignored) as `ANTHROPIC_API_KEY=...`.
+Prompts live in `src/solo_dm/infrastructure/llm/prompts/`.
 
 ## Layout
 

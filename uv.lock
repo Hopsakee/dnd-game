@@ -17,11 +17,100 @@ wheels = [
 ]
 
 [[package]]
+name = "anthropic"
+version = "2.6.0"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "docstring-parser" },
+    { name = "httpx2" },
+    { name = "jiter" },
+    { name = "opentelemetry-api" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "/opt/wheels/anthropic-2.6.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "anyio"
+version = "4.16.0"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "idna" },
+    { name = "typing-extensions", marker = "python_full_version < '3.15'" },
+]
+wheels = [
+    { path = "/opt/wheels/anyio-4.16.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "docstring-parser"
+version = "0.18.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/docstring_parser-0.18.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "h11"
+version = "0.16.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/h11-0.16.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "httpcore2"
+version = "2.16.0"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "h11" },
+    { name = "truststore" },
+]
+wheels = [
+    { path = "/opt/wheels/httpcore2-2.16.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "httpx2"
+version = "2.16.0"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpcore2" },
+    { name = "idna" },
+    { name = "truststore" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+wheels = [
+    { path = "/opt/wheels/httpx2-2.16.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "idna"
+version = "3.20"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/idna-3.20-py3-none-any.whl" },
+]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "/opt/wheels" }
 wheels = [
     { path = "/opt/wheels/iniconfig-2.3.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "jiter"
+version = "0.18.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/jiter-0.18.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl" },
 ]
 
 [[package]]
@@ -41,6 +130,17 @@ version = "0.1.2"
 source = { registry = "/opt/wheels" }
 wheels = [
     { path = "/opt/wheels/mdurl-0.1.2-py3-none-any.whl" },
+]
+
+[[package]]
+name = "opentelemetry-api"
+version = "1.45.2"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+wheels = [
+    { path = "/opt/wheels/opentelemetry_api-1.45.2-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -145,10 +245,19 @@ wheels = [
 ]
 
 [[package]]
+name = "sniffio"
+version = "1.3.1"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/sniffio-1.3.1-py3-none-any.whl" },
+]
+
+[[package]]
 name = "solo-dm"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anthropic" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -163,6 +272,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anthropic", specifier = ">=2.6.0" },
     { name = "pydantic", specifier = ">=2.13" },
     { name = "python-dotenv", specifier = ">=1.2" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -173,6 +283,14 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = ">=9.1" },
     { name = "ruff", specifier = ">=0.16" },
+]
+
+[[package]]
+name = "truststore"
+version = "0.10.5"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/truststore-0.10.5-py3-none-any.whl" },
 ]
 
 [[package]]

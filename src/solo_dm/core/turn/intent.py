@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from solo_dm.core.rules.rules_difficulty import TaskCategory
 from solo_dm.core.state.models import Ability
 
 Action = Literal[
@@ -22,7 +23,7 @@ class Intent(BaseModel):
     ability: Ability | None = None
     skill: str | None = None
     approach: str = ""
-    task_category: Literal["trivial", "easy", "medium", "hard"] | None = None
+    task_category: TaskCategory | None = None
     lore_query: str | None = None
     confidence: Literal["low", "medium", "high"] = "high"
     compound: bool = False  # the input held more actions; only the first is resolved
