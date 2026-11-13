@@ -427,6 +427,14 @@ Out of scope: traps, secret-door mechanisms, hidden creatures and Stealth, time 
 - Every in-game error traced back to ingestion becomes a new eval case.
 - SRD 5.2 vs 2014 stat-block layout differences handled here.
 
+**First test book (Jelle, 2026-11-13): The Secrets of Skyhorn Lighthouse** (Arcane Library; 5th level, party of 4-5).
+- Where: `~/transport/dndgame/1060290-The_Secrets_of_Skyhorn_Lighhouse_V8-1.zip` in the box (PDF, print-friendly PDF, maps, combat cards, a Fantasy Grounds `.mod`).
+- Copyright: a purchased product. The converted adventure stays out of git (e.g. a gitignored `adventures/private/`); the repo holds code, evals and findings only.
+- Sources, use both and compare: the PDF is the real path, read with `pymupdf4llm` from the wheel store (23 pages). The `.mod`'s `db.xml` is clean structured XML (22 story sections, ~6,400 words; 16 NPCs, 4 items, 8 treasure parcels, 8 battles) and shows what PDF extraction loses.
+- First extraction eval case: the ligatures fl and fi come out as "2" ("2laps open", "the 2irst turn").
+- Scenes: rumours in the harbour; a water elemental attacks the ship; the lighthouse under siege by eelfolk; the caves below (sharks, hostages, the summoning room); aftermath.
+- Engine gaps it exposes (engine as of M5): a party of 4-5 at level 5; spells and magic items (Bead of Force, Dagger of Venom, Potion of Water Breathing, Bowl of Commanding Water Elementals); swimming, underwater combat and holding breath; morale (sharks flee below 15 HP); allied NPCs (the ship's crew, Lucien) and NPCs with goals to talk to; travel scenes by ship; non-SRD monsters (four eelfolk) with their own stat blocks; treasure parcels as loot; maps that exist only as images. Planning M7 means deciding which of these the engine gets and which the conversion simplifies away.
+
 ---
 
 ## 9. Out of scope for now
