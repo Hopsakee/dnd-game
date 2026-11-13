@@ -1,6 +1,7 @@
 """Abstract ports. Core depends on these; infrastructure implements them."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict
@@ -20,6 +21,22 @@ class RollResult(BaseModel):
     rolls: list[int]
     modifier: int
     total: int
+
+
+class LoreSnippet(BaseModel):
+    """One lore file: background the model may use. Never mechanics (plan 3.8)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    topic: str
+    tags: tuple[str, ...]
+    text: str
+
+
+class LorePort(ABC):
+    @abstractmethod
+    def search(self, query: str | None = None, tags: Iterable[str] = ()) -> list[LoreSnippet]:
+        """Lore carrying any of the tags, plus the best full-text matches for query."""
 
 
 class DicePort(ABC):

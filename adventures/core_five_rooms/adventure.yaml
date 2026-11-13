@@ -60,15 +60,30 @@ entities:
 
 items:
   # The goblin carries the key: kill it, then search the body.
-  - {id: iron_key, name: Iron Key, carried_by: goblin_scout}
+  - id: iron_key
+    name: Iron Key
+    description: A heavy, cold iron key whose bow is shaped like a sun.
+    carried_by: goblin_scout
   # Behind the fallen ceiling. DC 15 is above the Fighter's passive Perception
   # (13), so only an active search finds it.
-  - {id: silver_chalice, name: Silver Chalice, location: storeroom, hidden: {dc: 15}}
+  - id: silver_chalice
+    name: Silver Chalice
+    description: A dented silver cup, black with tarnish, worth a few coins once polished.
+    location: storeroom
+    hidden: {dc: 15}
   # At the foot of a pillar. DC 11: the Fighter notices it on entering.
-  - {id: tarnished_ring, name: Tarnished Ring, location: hall, hidden: {dc: 11}}
+  - id: tarnished_ring
+    name: Tarnished Ring
+    description: A plain brass ring, green with age. Somebody lost it long ago.
+    location: hall
+    hidden: {dc: 11}
   - id: sunken_amulet
     name: Sunken Amulet
+    description: >
+      A gold amulet set with a pale stone that glows faintly, like the sky just
+      before dawn.
     location: shrine
+    tags: [shrine]
     on_take:
       set_flag: amulet_retrieved
 

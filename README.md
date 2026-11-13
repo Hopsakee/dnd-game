@@ -64,6 +64,24 @@ A rewind deletes nothing: later turns are marked superseded and stay in
 `turns`. The event log is the truth; a test checks that replaying it from the
 start gives the stored snapshot.
 
+M5: lore. Markdown files in `lore/`, one per topic, with front matter:
+
+```markdown
+---
+title: Goblins of the Hill Country
+tags: [goblin]
+---
+Background the character may know...
+```
+
+At start the files are indexed in SQLite FTS5 (in memory, so an edited file is
+picked up at the next start). The scene gets the lore whose tags match the
+location or a creature or item that is visible there, and the interpreter can
+ask for more with `lore_query` ("what do I remember about the shrine?"). Lore
+only colours interpretation and narration; it never changes what happens. Items
+in an adventure may have a `description`, which the narrator follows instead of
+inventing properties.
+
 ## Commands
 
 ```bash

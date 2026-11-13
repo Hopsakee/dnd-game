@@ -20,6 +20,7 @@ from solo_dm.infrastructure.dice.seeded_dice import SeededDice
 from solo_dm.infrastructure.llm.anthropic_llm import AnthropicLLM, make_anthropic_client
 from solo_dm.infrastructure.llm.cost_log import CostLog
 from solo_dm.infrastructure.llm.fake_llm import FakeLLM
+from solo_dm.infrastructure.lore.fts_lore_index import FtsLoreIndex
 from solo_dm.infrastructure.persistence.sqlite_campaign_store import (
     SQLiteCampaignStore,
     UnknownCampaign,
@@ -46,19 +47,20 @@ def build_terminal_game(
 ) -> TerminalGame:
     """A new game of adventure_id, stored as a new campaign when a store is given;
     or, with campaign_id, that campaign resumed from the store."""
-    if store is not None and campaign_id is not None:
-        session = GameSession.resume(store, campaign_id, llm, dice)
-        return TerminalGame(session, SOLO_ACTOR, console, spend)
     settings = load_settings(root)
+    lore = FtsLoreIndex(settings.paths.lore)
+    if store is not None and campaign_id is not None:
+        session = GameSession.resume(store, campaign_id, llm, dice, lore)
+        return TerminalGame(session, SOLO_ACTOR, console, spend)
     catalog = YamlSrdCatalog(settings.paths.srd)
     adventure = YamlAdventureSource(settings.paths.adventures).load(adventure_id)
     hero = catalog.premade_character("fighter_level_1", character_id=SOLO_ACTOR, player_id="jelle")
     bestiary = {e.srd_ref: catalog.stat_block(e.srd_ref) for e in adventure.entities}
     state = initial_state(adventure, [hero], bestiary)
     if store is None:
-        session = GameSession(adventure, state, llm, dice)
+        session = GameSession(adventure, state, llm, dice, lore=lore)
     else:
-        session = GameSession.start_campaign(store, adventure, state, llm, dice)
+        session = GameSession.start_campaign(store, adventure, state, llm, dice, lore)
     return TerminalGame(session, SOLO_ACTOR, console, spend)
 
 

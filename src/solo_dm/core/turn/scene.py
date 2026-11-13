@@ -6,6 +6,7 @@ interpreter nor narrator can leak or target what the party has not seen."""
 from pydantic import BaseModel
 
 from solo_dm.core.adventure.schema import Adventure
+from solo_dm.core.ports import LoreSnippet
 from solo_dm.core.state.models import GameState
 from solo_dm.core.turn.combat import active_combatant
 
@@ -27,6 +28,12 @@ class SceneCreature(BaseModel):
 class SceneItem(BaseModel):
     item_id: str
     name: str
+    description: str | None = None
+
+    @classmethod
+    def of(cls, adventure: Adventure, item_id: str) -> "SceneItem":
+        item = adventure.item(item_id)
+        return cls(item_id=item_id, name=item.name, description=item.description)
 
 
 class ScenePartyMember(BaseModel):
@@ -57,6 +64,9 @@ class SceneContext(BaseModel):
     party: list[ScenePartyMember]
     in_combat: bool
     active_combatant: str | None
+    # Background for the tagged location, creatures and items here, and for what
+    # the interpreter asked to look up. Context only: it never changes outcomes.
+    lore: list[LoreSnippet] = []
 
     def valid_ids(self) -> set[str]:
         held = {i.item_id for m in self.party for i in m.inventory}
@@ -66,6 +76,16 @@ class SceneContext(BaseModel):
             | {i.item_id for i in self.items}
             | held
         )
+
+
+def scene_tags(scene: SceneContext, adventure: Adventure) -> list[str]:
+    """Tags of the location and of every creature and item the scene shows."""
+    tags = list(adventure.location(scene.location_id).tags)
+    for creature in scene.creatures:
+        tags += adventure.entity(creature.creature_id).tags
+    for item_id in [i.item_id for i in scene.items]:
+        tags += adventure.item(item_id).tags
+    return list(dict.fromkeys(tags))
 
 
 def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
@@ -99,7 +119,7 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
             if c.location == location.id
         ],
         items=[
-            SceneItem(item_id=item_id, name=adventure.item(item_id).name)
+            SceneItem.of(adventure, item_id)
             for item_id, where in state.items_on_floor.items()
             if where == location.id and item_id not in state.hidden_unfound
         ],
@@ -113,7 +133,7 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
                 armor_class=m.armor_class,
                 armor=m.armor,
                 weapons=[w.name for w in m.weapons],
-                inventory=[SceneItem(item_id=i, name=adventure.item(i).name) for i in m.inventory],
+                inventory=[SceneItem.of(adventure, i) for i in m.inventory],
             )
             for m in state.party.values()
         ],
