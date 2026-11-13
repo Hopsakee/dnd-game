@@ -1,10 +1,11 @@
 """The turn pipeline (plan 3.5): interpret -> validate -> resolve -> apply ->
-narrate, with a turn log. Persistence of the log arrives in M4."""
+narrate, with a turn log. With a campaign store, every turn is stored as it is
+played (plan 3.5 step 7, 9), so a campaign can be resumed and rewound."""
 
 from pydantic import BaseModel, ValidationError
 
 from solo_dm.core.adventure.schema import Adventure
-from solo_dm.core.ports import DicePort, LLMPort
+from solo_dm.core.ports import CampaignStorePort, DicePort, LLMPort
 from solo_dm.core.state.apply import apply_events
 from solo_dm.core.state.events import Event
 from solo_dm.core.state.models import GameState
@@ -31,15 +32,46 @@ class TurnRecord(BaseModel):
     flag_note: str | None = None
 
 
+class StoredCampaign(BaseModel):
+    """A campaign as read back: the frozen adventure copy, the turn-0 state, the
+    turns still in play (not superseded by a rewind) and the latest snapshot."""
+
+    campaign_id: int
+    adventure: Adventure
+    initial_state: GameState
+    turns: list[TurnRecord]
+    state: GameState
+
+
 class GameSession:
     def __init__(
-        self, adventure: Adventure, state: GameState, llm: LLMPort, dice: DicePort
+        self,
+        adventure: Adventure,
+        state: GameState,
+        llm: LLMPort,
+        dice: DicePort,
+        store: CampaignStorePort | None = None,
+        campaign_id: int | None = None,
+        turns: list[TurnRecord] | None = None,
     ) -> None:
         self.adventure = adventure
         self.state = state
         self._llm = llm
         self._dice = dice
-        self.turns: list[TurnRecord] = []
+        self._store = store
+        self.campaign_id = campaign_id
+        self.turns: list[TurnRecord] = list(turns or [])
+
+    @classmethod
+    def start_campaign(cls, store: CampaignStorePort, adventure: Adventure, state: GameState,
+                       llm: LLMPort, dice: DicePort) -> "GameSession":
+        return cls(adventure, state, llm, dice, store, store.create(adventure, state))
+
+    @classmethod
+    def resume(cls, store: CampaignStorePort, campaign_id: int, llm: LLMPort,
+               dice: DicePort) -> "GameSession":
+        stored = store.load(campaign_id)
+        return cls(stored.adventure, stored.state, llm, dice, store, campaign_id, stored.turns)
 
     def scene(self) -> SceneContext:
         return build_scene(self.state, self.adventure)
@@ -73,6 +105,8 @@ class GameSession:
     def flag_last_turn(self, note: str) -> None:
         last = self.turns[-1]
         self.turns[-1] = last.model_copy(update={"flag_note": note})
+        if self._store is not None:
+            self._store.flag_turn(self.campaign_id, last.turn_number, note)
 
     def _interpret(self, player_input: str, scene: SceneContext):
         error = None
@@ -104,6 +138,8 @@ class GameSession:
             fallback=bool(intent and intent.action == "ability_check"),
         )
         self.turns.append(record)
+        if self._store is not None:
+            self._store.record_turn(self.campaign_id, record, self.state)
         return record
 
 

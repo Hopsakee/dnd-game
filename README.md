@@ -47,6 +47,23 @@ In play, `cost` shows this session's spend, and quitting prints it. Every call
 is logged to `logs/llm_calls.jsonl` (tokens and estimated cost, no text);
 `settings.yaml` sets a daily cap (`cost.daily_cap_usd`).
 
+M4: campaigns. Every `play` starts a numbered campaign, stored after every turn
+in `campaigns/campaigns.db` (SQLite, gitignored) with a frozen copy of the
+adventure, so stopping is just `quit`:
+
+```bash
+uv run solo-dm campaigns                  # list them, with turns and outcome
+uv run solo-dm play --campaign 1          # resume campaign 1
+uv run solo-dm rewind 1 2                 # back to the state after turn 2 (0: the start)
+uv run solo-dm turns 1                    # every turn, superseded ones too
+uv run solo-dm turns 1 --fallback         # ability-check fallbacks: mechanics to build next
+uv run solo-dm turns 1 --rejected         # intents that failed validation twice
+```
+
+A rewind deletes nothing: later turns are marked superseded and stay in
+`turns`. The event log is the truth; a test checks that replaying it from the
+start gives the stored snapshot.
+
 ## Commands
 
 ```bash

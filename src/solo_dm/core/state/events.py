@@ -139,3 +139,13 @@ class AttitudeChanged(Event):
 
 class AdventureWon(Event):
     type: Literal["adventure_won"] = "adventure_won"
+
+
+def event_types() -> dict[str, type[Event]]:
+    """Every event class by its type tag, read from the classes themselves so a new
+    event needs no second list to be stored and read back."""
+    return {cls.model_fields["type"].default: cls for cls in Event.__subclasses__()}
+
+
+def event_from_stored(event_type: str, payload: dict) -> Event:
+    return event_types()[event_type].model_validate(payload)

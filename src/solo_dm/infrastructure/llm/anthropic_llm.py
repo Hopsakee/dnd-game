@@ -52,7 +52,7 @@ class AnthropicLLM(LLMPort):
         self._client = client
         self._settings = settings
         self._cost_log = cost_log
-        self._campaign = campaign
+        self.campaign = campaign
         self._system = {"interpreter": interpreter_prompt(), "narrator": narrator_prompt()}
         self.spent_usd = 0.0
 
@@ -99,7 +99,7 @@ class AnthropicLLM(LLMPort):
             raise LLMUnavailable(str(failure) or type(failure).__name__) from failure
         self.spent_usd += self._cost_log.record(
             role, model, response.usage.input_tokens, response.usage.output_tokens,
-            campaign=self._campaign,
+            campaign=self.campaign,
         )
         return "".join(b.text for b in response.content if b.type == "text")
 

@@ -67,7 +67,7 @@ class TerminalGame:
             "hp": self._hit_points,
             "look": self._look,
             "map": self._map,
-            "save": lambda: "Saving arrives with campaigns in M4.",
+            "save": self._save,
             "cost": self._cost,
         }
         if command == "quit":
@@ -97,6 +97,11 @@ class TerminalGame:
             if scene.in_combat and scene.active_combatant == self.actor_id:
                 self.console.print("Your turn.")
         return True
+
+    def _save(self) -> str:
+        if self.session.campaign_id is None:
+            return "This game is not stored as a campaign."
+        return f"Saved: campaign {self.session.campaign_id} is stored after every turn."
 
     def _cost(self) -> str:
         if self._spend is None:
