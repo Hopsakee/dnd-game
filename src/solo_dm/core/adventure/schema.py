@@ -45,6 +45,9 @@ class Location(AdventureModel):
     exits: tuple[Exit, ...] = ()
     tags: tuple[str, ...] = ()
     checks: tuple[CheckConsequence, ...] = ()
+    # What can be smelt or heard from the rooms next door. Keep it to things that
+    # do not change in play (smoke, water, wind), not creatures that may die.
+    senses: str | None = None
 
 
 class EntityPlacement(AdventureModel):

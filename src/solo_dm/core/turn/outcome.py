@@ -11,3 +11,6 @@ class TurnOutcome(BaseModel):
     intent: Intent
     events: list[Event]
     blocked: str | None = None
+    # The player's own words, so a question in them gets answered; they never
+    # change what happened (play-test flag 5, 2026-11-13).
+    player_input: str = ""

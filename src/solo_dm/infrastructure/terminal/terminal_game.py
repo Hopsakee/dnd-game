@@ -9,10 +9,23 @@ from solo_dm.core.turn.session import GameSession
 from solo_dm.infrastructure.llm.cost_log import LLMUnavailable
 
 HELP = (
+    "Shortcuts: a = attack, n/s/e/w = go north/south/east/west. "
     "Commands: inv (or inventory, i), hp, look, map, cost, flag <note>, help, save, quit. "
     "Anything else is an action, e.g. 'go north', 'attack goblin', 'search', "
     "'search goblin', 'take key'."
 )
+
+
+# Typed often, so short (play-test flag 10, 2026-11-13). Only the first word is
+# expanded: "a goblin" is "attack goblin".
+SHORTCUTS = {"a": "attack", "n": "go north", "s": "go south", "e": "go east", "w": "go west"}
+
+
+def expand_shortcut(line: str) -> str:
+    first, _, rest = line.partition(" ")
+    if first.lower() not in SHORTCUTS:
+        return line
+    return f"{SHORTCUTS[first.lower()]} {rest}".strip()
 
 
 class TerminalGame:
@@ -44,6 +57,7 @@ class TerminalGame:
 
     def handle(self, line: str) -> bool:
         """Answer one input line. Returns False when the player quits."""
+        line = expand_shortcut(line)
         command, _, rest = line.partition(" ")
         builtin = {
             "help": lambda: HELP,
@@ -78,6 +92,10 @@ class TerminalGame:
             # the exits and items are always right whichever model narrates.
             if self.session.state.party_location != location_before:
                 self.console.print(self._look())
+            # Whose turn it is comes from state too; the narrator keeps mechanics out.
+            scene = self.session.scene()
+            if scene.in_combat and scene.active_combatant == self.actor_id:
+                self.console.print("Your turn.")
         return True
 
     def _cost(self) -> str:
@@ -91,8 +109,8 @@ class TerminalGame:
             gear = [f"wears {m.armor} (AC {m.armor_class})" if m.armor else f"AC {m.armor_class}"]
             if m.weapons:
                 gear.append("wields " + ", ".join(m.weapons))
-            carried = ", ".join(i.name for i in m.inventory) or "nothing"
-            lines.append(f"{m.name}: {', '.join(gear)}; carries {carried}")
+            carried = ", ".join(i.name for i in m.inventory) or "empty"
+            lines.append(f"{m.name}: {', '.join(gear)}; pack: {carried}")
         return "\n".join(lines)
 
     def _hit_points(self) -> str:
@@ -114,6 +132,8 @@ class TerminalGame:
                 c.name + ("" if c.alive else " (dead)") for c in scene.creatures))
         if scene.items:
             lines.append("Items: " + ", ".join(i.name for i in scene.items))
+        if scene.nearby:
+            lines.append("Nearby: " + "; ".join(f"{n.direction}: {n.senses}" for n in scene.nearby))
         return "\n".join(lines)
 
     def _map(self) -> str:

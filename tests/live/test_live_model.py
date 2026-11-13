@@ -138,3 +138,44 @@ def test_a_failed_persuasion_does_not_name_the_skill(llm):
         approach="ask the empty stairs to let me pass"))
     text = llm.narrate(outcome, session.scene()).lower()
     assert "persuasion" not in text and "charisma" not in text and "check" not in text
+
+
+# Jelle's second play test, 2026-11-13 (playtest-flags.md 8, 9, 11, 12).
+
+def test_listening_in_the_hall_picks_up_the_smoke_from_the_guard_room(llm):
+    session = _session(llm, moves=["north"])
+    turn = session.play_turn(SOLO_ACTOR, "I stand still, listen and sniff the air")
+    assert turn.intent is not None and turn.intent.action == "look"
+    assert "smoke" in turn.narration.lower()
+
+
+def test_combat_starting_is_told_without_mechanics(llm):
+    session = _session(llm, moves=["north"])
+    turn = session.play_turn(SOLO_ACTOR, "go east")
+    assert "combat_started" in [e.type for e in turn.events]
+    text = turn.narration.lower()
+    assert "initiative" not in text and "your turn" not in text and "rolled" not in text
+
+
+def test_a_picked_up_item_is_not_given_magic_it_does_not_have(llm):
+    session = _session(llm, moves=["north"])
+    turn = session.play_turn(SOLO_ACTOR, "pick up the tarnished ring")
+    assert [e.type for e in turn.events] == ["item_taken"]
+    text = turn.narration.lower()
+    assert not any(word in text for word in ("warm", "glow", "hum", "tingl", "inventory"))
+
+
+def test_stowing_a_carried_item_is_understood_and_changes_nothing(llm):
+    session = _session(llm, moves=["north"])
+    hero = session.state.party[SOLO_ACTOR]
+    party = {SOLO_ACTOR: hero.model_copy(update={"inventory": ("tarnished_ring",)})}
+    session.state = session.state.model_copy(update={"party": party})
+    turn = session.play_turn(SOLO_ACTOR, "Put the ring in my backpack")
+    assert turn.intent is not None and turn.intent.action == "look"
+    assert turn.events == [] and "no rule" not in turn.narration
+
+
+def test_next_door_senses_are_left_out_of_a_turn_that_is_not_about_them(llm):
+    session = _session(llm, moves=["north"])
+    turn = session.play_turn(SOLO_ACTOR, "pick up the tarnished ring")
+    assert "smoke" not in turn.narration.lower()

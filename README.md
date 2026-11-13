@@ -38,6 +38,11 @@ uv run solo-dm play --adventure scenarios/ability_check
 uv run solo-dm cost                       # model spend per day and per campaign
 ```
 
+Shortcuts: `a` is attack (`a goblin`), `n`/`s`/`e`/`w` go that way, `i` shows
+what you wear, wield and carry. A location in an adventure may have `senses:`
+(a smell or sound, e.g. `woodsmoke`), which the rooms next door can notice;
+keep it to things that do not change in play.
+
 In play, `cost` shows this session's spend, and quitting prints it. Every call
 is logged to `logs/llm_calls.jsonl` (tokens and estimated cost, no text);
 `settings.yaml` sets a daily cap (`cost.daily_cap_usd`).

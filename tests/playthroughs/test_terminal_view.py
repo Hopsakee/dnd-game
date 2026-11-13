@@ -83,6 +83,45 @@ def test_inventory_and_i_are_the_inv_command_and_show_what_is_worn_and_wielded()
         game, output = _game(FakeLLM())
         game.handle(command)
         assert output.getvalue().strip() == (
-            "Fighter: wears Chain Mail (AC 17), wields Greatsword; carries nothing"
+            "Fighter: wears Chain Mail (AC 17), wields Greatsword; pack: empty"
         )
         assert game.session.turns == []
+
+
+# Jelle's second M3 play test, 2026-11-13 (playtest-flags.md 8-11).
+
+def test_the_room_view_names_what_can_be_sensed_from_next_door():
+    _, _, _, text = play("core_five_rooms", ["go north"])
+    after_move = text.split("You enter the Pillared Hall.", 1)[1]
+    assert "Nearby: east: woodsmoke" in after_move
+
+
+def test_short_commands_expand_before_the_model_sees_them():
+    from solo_dm.infrastructure.llm.fake_llm import FakeLLM
+
+    seen = []
+
+    class Recording(FakeLLM):
+        def interpret(self, player_input, scene, previous_error=None):
+            seen.append(player_input)
+            return super().interpret(player_input, scene, previous_error)
+
+    game, _ = _game(Recording())
+    for line in ("n", "e", "a", "a goblin"):
+        game.handle(line)
+    assert seen[:4] == ["go north", "go east", "attack", "attack goblin"]
+
+
+def test_in_combat_the_terminal_says_whose_turn_it_is():
+    _, _, _, text = play("core_five_rooms", ["go north", "go east"])
+    assert text.rstrip().endswith("Your turn.")
+
+
+def test_the_inventory_calls_what_you_carry_your_pack():
+    from solo_dm.infrastructure.llm.fake_llm import FakeLLM
+
+    game, output = _game(FakeLLM())
+    game.handle("i")
+    assert output.getvalue().strip() == (
+        "Fighter: wears Chain Mail (AC 17), wields Greatsword; pack: empty"
+    )
