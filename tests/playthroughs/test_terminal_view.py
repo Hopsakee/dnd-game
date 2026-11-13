@@ -72,3 +72,17 @@ def test_with_the_fake_model_there_is_no_spend_to_show():
     game, output = _game(FakeLLM())
     game.handle("cost")
     assert "no model cost" in output.getvalue()
+
+
+def test_inventory_and_i_are_the_inv_command_and_show_what_is_worn_and_wielded():
+    # Play-test flag 4 (2026-11-13): "inventory" went to the model and came back
+    # as "the moment doesn't offer a clear way to do it".
+    from solo_dm.infrastructure.llm.fake_llm import FakeLLM
+
+    for command in ("inv", "inventory", "i"):
+        game, output = _game(FakeLLM())
+        game.handle(command)
+        assert output.getvalue().strip() == (
+            "Fighter: wears Chain Mail (AC 17), wields Greatsword; carries nothing"
+        )
+        assert game.session.turns == []

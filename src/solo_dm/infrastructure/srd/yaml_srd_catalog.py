@@ -22,6 +22,7 @@ class CharacterTemplate(BaseModel):
     abilities: AbilityScores
     max_hp: int
     armor_class: int
+    armor: str | None = None
     proficiency_bonus: int
     skill_proficiencies: list[str]
     weapons: list[str]
@@ -62,6 +63,7 @@ class YamlSrdCatalog:
             max_hp=template.max_hp,
             hp=template.max_hp,
             armor_class=template.armor_class,
+            armor=template.armor,
             proficiency_bonus=template.proficiency_bonus,
             skill_proficiencies=tuple(template.skill_proficiencies),
             weapons=tuple(weapons[w] for w in template.weapons),

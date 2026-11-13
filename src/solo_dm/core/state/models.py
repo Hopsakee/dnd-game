@@ -40,6 +40,7 @@ class Character(FrozenModel):
     max_hp: int
     hp: int
     armor_class: int
+    armor: str | None = None  # what is worn, for the narrator; armor_class does the rules
     proficiency_bonus: int
     skill_proficiencies: tuple[str, ...] = ()
     weapons: tuple[Weapon, ...] = ()

@@ -38,9 +38,14 @@ from solo_dm.core.turn.scene import build_scene
 class Resolution(BaseModel):
     events: list[Event] = []
     blocked: str | None = None
+    rule_missing: bool = False  # blocked because the engine has no rule, not the fiction
 
 
 class Blocked(Exception):
+    pass
+
+
+class NoRule(Blocked):
     pass
 
 
@@ -58,7 +63,7 @@ def resolve_intent(
             raise Blocked(f"There is no {intent.target_id.replace('_', ' ')} here.")
         events = _ACTIONS.get(intent.action, _no_rule_yet)(state, adventure, actor_id, intent, dice)
     except Blocked as blocked:
-        return Resolution(blocked=str(blocked))
+        return Resolution(blocked=str(blocked), rule_missing=isinstance(blocked, NoRule))
     return Resolution(events=events + _aftermath(state, apply_events(state, events), dice))
 
 
@@ -193,8 +198,16 @@ def _look(state, adventure, actor_id, intent, dice) -> list[Event]:
     return []
 
 
+def _talk(state, adventure, actor_id, intent, dice) -> list[Event]:
+    """Plain conversation needs no roll and changes nothing; the narrator voices
+    the reply. Changing a creature's mind is an ability check instead."""
+    if intent.target_id is not None and intent.target_id not in state.creatures:
+        raise Blocked("You can only talk to someone who is here.")
+    return []
+
+
 def _no_rule_yet(state, adventure, actor_id, intent, dice) -> list[Event]:
-    raise Blocked("There is no rule for that yet.")
+    raise NoRule(f"The game has no rule for that yet ({intent.action}).")
 
 
 def _require_exit(adventure: Adventure, intent: Intent):
@@ -211,6 +224,7 @@ _ACTIONS = {
     "unlock": _unlock,
     "open": _open,
     "look": _look,
+    "talk": _talk,
     "search": _search,
     "ability_check": _ability_check,
 }

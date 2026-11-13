@@ -97,3 +97,44 @@ def test_the_narrator_tells_a_blocked_action_without_changing_it(llm):
                           events=[], blocked="There is no lantern here.")
     text = llm.narrate(outcome, session.scene())
     assert text and "(narrator unavailable" not in text
+
+
+# Jelle's play test, 2026-11-13 (playtest-flags.md 2, 3, 5, 6).
+
+def test_asking_a_creature_something_is_talk_and_is_narrated_as_speech(llm):
+    session = _session(llm, moves=["north", "east"])  # the guard room's goblin
+    turn = session.play_turn(SOLO_ACTOR, "I ask the goblin what its name is")
+    assert turn.intent is not None and turn.intent.action == "talk"
+    assert "no rule" not in turn.narration
+
+
+def test_a_question_about_your_own_gear_is_answered_from_the_scene(llm):
+    session = _session(llm)
+    turn = session.play_turn(SOLO_ACTOR, "What armor am I wearing, and do I have a weapon?")
+    assert turn.intent is not None and turn.intent.action == "look"
+    text = turn.narration.lower()
+    assert "chain mail" in text and "greatsword" in text
+
+
+def test_a_door_opened_with_the_key_is_not_narrated_as_lock_picking(llm):
+    from solo_dm.core.state.events import DoorUnlocked
+
+    session = _session(llm, moves=["north"])
+    unlocked = DoorUnlocked(actor_id=SOLO_ACTOR, exit_id="hall_to_shrine", method="key")
+    outcome = TurnOutcome(actor_id=SOLO_ACTOR, events=[unlocked], intent=Intent(
+        action="unlock", target_id="hall_to_shrine", approach="use the key I found"))
+    text = llm.narrate(outcome, session.scene()).lower()
+    assert "key" in text and "pick" not in text and "pins" not in text
+
+
+def test_a_failed_persuasion_does_not_name_the_skill(llm):
+    from solo_dm.core.state.events import CheckRolled
+
+    session = _session(llm)
+    check = CheckRolled(actor_id=SOLO_ACTOR, ability="CHA", skill="persuasion", d20=3,
+                        modifier=0, dc=15, total=3, success=False)
+    outcome = TurnOutcome(actor_id=SOLO_ACTOR, events=[check], intent=Intent(
+        action="ability_check", ability="CHA", skill="persuasion",
+        approach="ask the empty stairs to let me pass"))
+    text = llm.narrate(outcome, session.scene()).lower()
+    assert "persuasion" not in text and "charisma" not in text and "check" not in text

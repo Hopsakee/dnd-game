@@ -9,7 +9,7 @@ from solo_dm.core.turn.session import GameSession
 from solo_dm.infrastructure.llm.cost_log import LLMUnavailable
 
 HELP = (
-    "Commands: inv, hp, look, map, cost, flag <note>, help, save, quit. "
+    "Commands: inv (or inventory, i), hp, look, map, cost, flag <note>, help, save, quit. "
     "Anything else is an action, e.g. 'go north', 'attack goblin', 'search', "
     "'search goblin', 'take key'."
 )
@@ -48,6 +48,8 @@ class TerminalGame:
         builtin = {
             "help": lambda: HELP,
             "inv": self._inventory,
+            "inventory": self._inventory,
+            "i": self._inventory,
             "hp": self._hit_points,
             "look": self._look,
             "map": self._map,
@@ -84,10 +86,14 @@ class TerminalGame:
         return f"This session: ${self._spend():.4f} in model calls. All time: uv run solo-dm cost"
 
     def _inventory(self) -> str:
-        return "\n".join(
-            f"{m.name}: " + (", ".join(i.name for i in m.inventory) or "nothing")
-            for m in self.session.scene().party
-        )
+        lines = []
+        for m in self.session.scene().party:
+            gear = [f"wears {m.armor} (AC {m.armor_class})" if m.armor else f"AC {m.armor_class}"]
+            if m.weapons:
+                gear.append("wields " + ", ".join(m.weapons))
+            carried = ", ".join(i.name for i in m.inventory) or "nothing"
+            lines.append(f"{m.name}: {', '.join(gear)}; carries {carried}")
+        return "\n".join(lines)
 
     def _hit_points(self) -> str:
         return "\n".join(f"{m.name}: {m.hp}/{m.max_hp} HP" for m in self.session.scene().party)
