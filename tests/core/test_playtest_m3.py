@@ -87,3 +87,10 @@ def test_the_scene_tells_the_model_what_the_party_wears_and_wields():
     (member,) = _session(ScriptedLLM([])).scene().party
     assert member.weapons == ["Greatsword"]
     assert member.armor_class == 17
+
+
+def test_the_narrator_gets_the_players_own_words():
+    llm = ScriptedLLM([{"action": "look", "approach": "look around"}])
+    _session(llm).play_turn("hero", "What armor am I wearing?")
+    outcome, _ = llm.narrated[0]
+    assert outcome.player_input == "What armor am I wearing?"

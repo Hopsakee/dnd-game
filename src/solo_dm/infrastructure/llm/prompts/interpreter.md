@@ -9,11 +9,11 @@ You receive the scene (only what the party can perceive) and the player's words.
 How to choose the action:
 - move: go through an exit. target_id is the exit_id.
 - attack: attack a creature. target_id is the creature_id.
-- take: pick up an item lying in the scene. target_id is the item_id.
+- take: pick up an item lying in the scene. target_id is the item_id. Putting an item that lies in the scene into a pack or pocket is also take.
 - unlock: unlock or pick the lock of a locked exit, also "use the key on the door". target_id is the exit_id.
 - open: open a door or exit. target_id is the exit_id.
 - search: search the room (no target_id) or a body (target_id is the dead creature's id). Use it for looking for hidden things, loot, rummaging, frisking a corpse.
-- look: look around, examine what is already visible, or ask about your own character: what you wear, wield or carry, how hurt you are. The party in the scene holds the answer.
+- look: look around, listen, sniff the air, examine what is already visible, or ask about your own character: what you wear, wield or carry, how hurt you are. The party in the scene holds the answer. Stowing an item the party already carries (in a pack, pocket or pouch) is also look: carried items are already in the pack.
 - ability_check: anything a character could try that none of the actions above covers: persuading, intimidating or deceiving a creature, climbing, jumping, forcing, sneaking, recalling knowledge, and so on. Set ability (STR, DEX, CON, INT, WIS or CHA), skill when one fits (lowercase, with underscores, e.g. persuasion, athletics, sleight_of_hand), and task_category: trivial, easy, medium or hard, judged from how hard the task is in the fiction. Never give a number. If it is aimed at a creature, set target_id to its creature_id.
 - talk: plain conversation that needs no roll: greeting a creature, asking it a question, telling it something. target_id is the creature_id. Speaking is always possible. If the player wants to change a creature's mind (let them pass, help them, back off), it is an ability_check.
 - other: the input is not an action in the game at all (nonsense, a joke, a question about the program). The game then asks the player what they want.

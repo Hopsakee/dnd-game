@@ -147,3 +147,14 @@ def test_the_narrator_falls_back_to_plain_narration_so_a_decided_turn_is_never_l
     text = llm.narrate(TurnOutcome(actor_id="hero", intent=Intent(action="look"), events=[flag]),
                        SCENE)
     assert text.startswith("(narrator unavailable: broker unreachable)")
+
+
+def test_the_narrator_hears_next_door_only_on_turns_about_perceiving(tmp_path):
+    from solo_dm.core.turn.scene import SceneSense
+
+    scene = SCENE.model_copy(update={"nearby": [SceneSense(direction="east", senses="woodsmoke")]})
+    llm, messages, _ = _llm(tmp_path, ["You look.", "You take it."])
+    llm.narrate(TurnOutcome(actor_id="hero", intent=Intent(action="look"), events=[]), scene)
+    llm.narrate(TurnOutcome(actor_id="hero", intent=Intent(action="take"), events=[]), scene)
+    look, take = (call["messages"][0]["content"] for call in messages.calls)
+    assert "woodsmoke" in look and "woodsmoke" not in take

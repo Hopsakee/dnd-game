@@ -41,11 +41,17 @@ class ScenePartyMember(BaseModel):
     inventory: list[SceneItem]
 
 
+class SceneSense(BaseModel):
+    direction: str  # the exit it comes through
+    senses: str
+
+
 class SceneContext(BaseModel):
     location_id: str
     location_name: str
     description: str
     exits: list[SceneExit]
+    nearby: list[SceneSense] = []
     creatures: list[SceneCreature]
     items: list[SceneItem]
     party: list[ScenePartyMember]
@@ -79,6 +85,11 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
             )
             for e in location.exits
             if e.id not in state.hidden_unfound
+        ],
+        nearby=[
+            SceneSense(direction=e.direction, senses=adventure.location(e.to).senses)
+            for e in location.exits
+            if e.id not in state.hidden_unfound and adventure.location(e.to).senses
         ],
         creatures=[
             SceneCreature(

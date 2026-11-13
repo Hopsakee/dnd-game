@@ -22,6 +22,9 @@ from solo_dm.infrastructure.llm.fake_llm import FakeLLM
 from solo_dm.infrastructure.settings import AnthropicConnection, LlmSettings, Role
 
 PROMPTS = Path(__file__).parent / "prompts"
+# Next-door smells and sounds go to the narrator only on turns about perceiving;
+# otherwise it repeats them every turn (play-test flag 8, 2026-11-13).
+SENSING_ACTIONS = {"move", "look", "search"}
 FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
 
 
@@ -69,6 +72,8 @@ class AnthropicLLM(LLMPort):
         decided = outcome.model_dump(mode="json", serialize_as_any=True)
         for event in decided["events"]:
             event.pop("dc", None)  # the narrator must not be able to give a DC away
+        if outcome.intent.action not in SENSING_ACTIONS:
+            scene = scene.model_copy(update={"nearby": []})
         content = f"<outcome>\n{json.dumps(decided, indent=1)}\n</outcome>\n\n"
         content += f"<scene>\n{scene.model_dump_json(indent=1)}\n</scene>"
         try:

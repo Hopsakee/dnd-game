@@ -63,7 +63,7 @@ class GameSession:
         self.state = apply_events(self.state, resolution.events)
         outcome = TurnOutcome(
             actor_id=actor_id, intent=intent, events=resolution.events,
-            blocked=resolution.blocked,
+            blocked=resolution.blocked, player_input=player_input,
         )
         narration = self._llm.narrate(outcome, self.scene())
         if intent.compound:

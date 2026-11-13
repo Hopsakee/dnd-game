@@ -30,6 +30,7 @@ locations:
     name: Guard Room
     description: >
       A cramped room with a smouldering brazier, a stool and gnawed bones on the floor.
+    senses: woodsmoke and the smell of old meat
     exits:
       - {id: guard_room_to_hall, to: hall, direction: west}
     tags: [goblin]
@@ -45,6 +46,7 @@ locations:
     name: Sunken Shrine
     description: >
       Water covers the floor ankle-deep. On a stone altar lies an amulet that glows faintly.
+    senses: a slow drip of water
     exits:
       - {id: shrine_to_hall, to: hall, direction: south}
     tags: [shrine]
