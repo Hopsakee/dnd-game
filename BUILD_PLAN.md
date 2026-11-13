@@ -426,6 +426,7 @@ Out of scope: traps, secret-door mechanisms, hidden creatures and Stealth, time 
 - Hand-verified gold-standard adventures; deterministic field-by-field evals (rooms, exits, stat blocks, items, triggers), with a model judge only for fuzzy fields like whether descriptions kept key details.
 - Every in-game error traced back to ingestion becomes a new eval case.
 - SRD 5.2 vs 2014 stat-block layout differences handled here.
+- First test book: The Secrets of Skyhorn Lighthouse. Sources, copyright decision and the engine gaps it exposes: [docs/m7-test-book-skyhorn.md](docs/m7-test-book-skyhorn.md).
 
 ---
 
