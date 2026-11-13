@@ -35,6 +35,9 @@ class ScenePartyMember(BaseModel):
     hp: int
     max_hp: int
     defeated: bool
+    armor_class: int
+    armor: str | None
+    weapons: list[str]
     inventory: list[SceneItem]
 
 
@@ -96,6 +99,9 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
                 hp=m.hp,
                 max_hp=m.max_hp,
                 defeated=m.defeated,
+                armor_class=m.armor_class,
+                armor=m.armor,
+                weapons=[w.name for w in m.weapons],
                 inventory=[SceneItem(item_id=i, name=adventure.item(i).name) for i in m.inventory],
             )
             for m in state.party.values()

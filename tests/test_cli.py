@@ -38,3 +38,11 @@ def test_cost_with_no_calls_yet_says_so(tmp_path, capsys):
     (tmp_path / "settings.yaml").write_text((PROJECT_ROOT / "settings.yaml").read_text())
     assert main(["cost"], root=tmp_path) == 0
     assert "No model calls logged yet" in capsys.readouterr().out
+
+
+def test_an_unknown_adventure_names_the_ones_that_exist(capsys):
+    # Play-test flag 1 (2026-11-13): a typo crashed with a FileNotFoundError traceback.
+    assert main(["play", "--fake", "--adventure", "scenarios/ability_chec"]) == 2
+    err = capsys.readouterr().err
+    assert "No adventure 'scenarios/ability_chec'" in err
+    assert "core_five_rooms" in err and "scenarios/ability_check" in err

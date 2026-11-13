@@ -13,15 +13,15 @@ How to choose the action:
 - unlock: unlock or pick the lock of a locked exit, also "use the key on the door". target_id is the exit_id.
 - open: open a door or exit. target_id is the exit_id.
 - search: search the room (no target_id) or a body (target_id is the dead creature's id). Use it for looking for hidden things, loot, rummaging, frisking a corpse.
-- look: look around or examine what is already visible.
+- look: look around, examine what is already visible, or ask about your own character: what you wear, wield or carry, how hurt you are. The party in the scene holds the answer.
 - ability_check: anything a character could try that none of the actions above covers: persuading, intimidating or deceiving a creature, climbing, jumping, forcing, sneaking, recalling knowledge, and so on. Set ability (STR, DEX, CON, INT, WIS or CHA), skill when one fits (lowercase, with underscores, e.g. persuasion, athletics, sleight_of_hand), and task_category: trivial, easy, medium or hard, judged from how hard the task is in the fiction. Never give a number. If it is aimed at a creature, set target_id to its creature_id.
-- talk: only for plain conversation that needs no roll. If the player wants to change a creature's mind, it is an ability_check.
-- other: the input is not an action in the game (a question to you, a joke, nonsense).
+- talk: plain conversation that needs no roll: greeting a creature, asking it a question, telling it something. target_id is the creature_id. Speaking is always possible. If the player wants to change a creature's mind (let them pass, help them, back off), it is an ability_check.
+- other: the input is not an action in the game at all (nonsense, a joke, a question about the program). The game then asks the player what they want.
 
 Rules:
 - Use only ids that appear in the scene. Never invent an id, and never target something the scene does not list.
 - approach: a short paraphrase of how the character does it, in the player's spirit.
 - If the input holds more than one action, return only the first and set compound to true.
-- confidence: low only if you genuinely cannot tell which of two or more actions or targets the player means; then approach is the question to ask back, phrased as the option you think most likely ("go through the north door").
+- confidence: low only if you genuinely cannot tell which of two or more actions or targets the player means. Return the action and target you think most likely; the game asks the player to confirm it.
 - Leave out fields that do not apply.
 - If you are told your previous reply was invalid, fix exactly that and reply with the corrected JSON object only.

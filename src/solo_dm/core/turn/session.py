@@ -14,6 +14,7 @@ from solo_dm.core.turn.resolve import resolve_intent
 from solo_dm.core.turn.scene import SceneContext, build_scene
 
 COMPOUND_NOTE = "(Only the first action was done.)"
+NO_RULE_HINT = "so nothing happened. Try saying it another way."
 
 
 class TurnRecord(BaseModel):
@@ -46,13 +47,19 @@ class GameSession:
     def play_turn(self, actor_id: str, player_input: str) -> TurnRecord:
         scene = self.scene()
         intent, error = self._interpret(player_input, scene)
-        if intent is None:
-            return self._record(actor_id, player_input, None, error, [], clarifying_question(scene))
+        if intent is None or intent.action == "other":
+            # Not an action in the game: ask what they want, from the scene.
+            return self._record(actor_id, player_input, intent, error, [],
+                                clarifying_question(scene))
         if intent.confidence == "low":
-            question = f"Do you mean: {intent.approach or intent.action}?"
+            question = f"Do you mean to {describe_intent(intent, scene)}, or something else?"
             return self._record(actor_id, player_input, intent, None, [], question)
 
         resolution = resolve_intent(self.state, self.adventure, actor_id, intent, self._dice)
+        if resolution.rule_missing:
+            # Said plainly: the narrator would turn it into "you cannot" in the fiction.
+            narration = f"{resolution.blocked.rstrip('.')}, {NO_RULE_HINT}"
+            return self._record(actor_id, player_input, intent, None, [], narration)
         self.state = apply_events(self.state, resolution.events)
         outcome = TurnOutcome(
             actor_id=actor_id, intent=intent, events=resolution.events,
@@ -98,6 +105,29 @@ class GameSession:
         )
         self.turns.append(record)
         return record
+
+
+def describe_intent(intent: Intent, scene: SceneContext) -> str:
+    """An intent in plain words, from the scene's names, to ask back with."""
+    names = {e.exit_id: f"the way {e.direction}" for e in scene.exits}
+    names |= {c.creature_id: f"the {c.name}" for c in scene.creatures}
+    names |= {i.item_id: f"the {i.name}" for i in scene.items}
+    names |= {i.item_id: f"the {i.name}" for m in scene.party for i in m.inventory}
+    target = names.get(intent.target_id or "", "")
+    exit_ = next((e for e in scene.exits if e.exit_id == intent.target_id), None)
+    if intent.action == "ability_check":
+        how = (intent.skill or intent.ability or "an ability").replace("_", " ")
+        return f"try it with {how}" + (f" on {target}" if target else "")
+    verb = {
+        "move": f"go {exit_.direction}" if exit_ else "go somewhere",
+        "attack": "attack", "take": "take", "use_item": "use", "open": "open",
+        "unlock": "unlock", "talk": "talk to", "look": "look around", "search": "search",
+    }[intent.action]
+    if intent.action in ("move", "look"):
+        return verb
+    if intent.action == "search" and not target:
+        target = "the room"
+    return f"{verb} {target}".strip()
 
 
 def clarifying_question(scene: SceneContext) -> str:

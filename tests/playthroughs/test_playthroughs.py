@@ -74,7 +74,7 @@ def test_builtin_commands_answer_without_a_model_turn():
     _, _, game, text = play("core_five_rooms", lines)
     assert len(game.session.turns) == 1  # only 'go north' went through the pipeline
     assert game.session.turns[0].flag_note == "too vague"
-    assert "Fighter: nothing" in text and "Fighter: 12/12 HP" in text
+    assert "carries nothing" in text and "Fighter: 12/12 HP" in text
     assert "* Pillared Hall: south -> Mossy Entrance" in text
     assert "east (unexplored)" in text and "north (unexplored, locked)" in text
     assert "Saving arrives with campaigns in M4." in text

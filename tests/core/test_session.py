@@ -55,7 +55,7 @@ def test_low_confidence_asks_to_confirm_instead_of_resolving():
     )
     session = _session(llm)
     turn = session.play_turn("hero", "maybe east?")
-    assert turn.narration == "Do you mean: wander east?"
+    assert turn.narration == "Do you mean to go east, or something else?"
     assert session.state.party_location == "hall"
 
 

@@ -12,7 +12,10 @@ from rich.console import Console
 from solo_dm.core.adventure.initial_state import initial_state
 from solo_dm.core.ports import DicePort, LLMPort
 from solo_dm.core.turn.session import GameSession
-from solo_dm.infrastructure.adventures.yaml_adventure_source import YamlAdventureSource
+from solo_dm.infrastructure.adventures.yaml_adventure_source import (
+    UnknownAdventure,
+    YamlAdventureSource,
+)
 from solo_dm.infrastructure.dice.random_dice import RandomDice
 from solo_dm.infrastructure.dice.seeded_dice import SeededDice
 from solo_dm.infrastructure.llm.anthropic_llm import AnthropicLLM, make_anthropic_client
@@ -59,7 +62,11 @@ def main(argv: list[str] | None = None, root: Path = PROJECT_ROOT) -> int:
         dice = SeededDice(args.seed) if args.seed is not None else RandomDice()
         console = Console()
         llm, spend = _choose_llm(args, root, console)
-        game = build_terminal_game(args.adventure, dice, llm, console, root, spend)
+        try:
+            game = build_terminal_game(args.adventure, dice, llm, console, root, spend)
+        except UnknownAdventure as unknown:
+            print(unknown, file=sys.stderr)
+            return 2
         outcome = game.run(lambda: input("> "))
         console.print(f"[bold]Outcome: {outcome}[/bold]")
         return 0
