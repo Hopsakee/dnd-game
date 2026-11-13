@@ -47,6 +47,41 @@ In play, `cost` shows this session's spend, and quitting prints it. Every call
 is logged to `logs/llm_calls.jsonl` (tokens and estimated cost, no text);
 `settings.yaml` sets a daily cap (`cost.daily_cap_usd`).
 
+M4: campaigns. Every `play` starts a numbered campaign, stored after every turn
+in `campaigns/campaigns.db` (SQLite, gitignored) with a frozen copy of the
+adventure, so stopping is just `quit`:
+
+```bash
+uv run solo-dm campaigns                  # list them, with turns and outcome
+uv run solo-dm play --campaign 1          # resume campaign 1
+uv run solo-dm rewind 1 2                 # back to the state after turn 2 (0: the start)
+uv run solo-dm turns 1                    # every turn, superseded ones too
+uv run solo-dm turns 1 --fallback         # ability-check fallbacks: mechanics to build next
+uv run solo-dm turns 1 --rejected         # intents that failed validation twice
+```
+
+A rewind deletes nothing: later turns are marked superseded and stay in
+`turns`. The event log is the truth; a test checks that replaying it from the
+start gives the stored snapshot.
+
+M5: lore. Markdown files in `lore/`, one per topic, with front matter:
+
+```markdown
+---
+title: Goblins of the Hill Country
+tags: [goblin]
+---
+Background the character may know...
+```
+
+At start the files are indexed in SQLite FTS5 (in memory, so an edited file is
+picked up at the next start). The scene gets the lore whose tags match the
+location or a creature or item that is visible there, and the interpreter can
+ask for more with `lore_query` ("what do I remember about the shrine?"). Lore
+only colours interpretation and narration; it never changes what happens. Items
+in an adventure may have a `description`, which the narrator follows instead of
+inventing properties.
+
 ## Commands
 
 ```bash

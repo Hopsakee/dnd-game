@@ -1,17 +1,18 @@
 """The turn pipeline (plan 3.5): interpret -> validate -> resolve -> apply ->
-narrate, with a turn log. Persistence of the log arrives in M4."""
+narrate, with a turn log. With a campaign store, every turn is stored as it is
+played (plan 3.5 step 7, 9), so a campaign can be resumed and rewound."""
 
 from pydantic import BaseModel, ValidationError
 
 from solo_dm.core.adventure.schema import Adventure
-from solo_dm.core.ports import DicePort, LLMPort
+from solo_dm.core.ports import CampaignStorePort, DicePort, LLMPort, LorePort
 from solo_dm.core.state.apply import apply_events
 from solo_dm.core.state.events import Event
 from solo_dm.core.state.models import GameState
 from solo_dm.core.turn.intent import Intent
 from solo_dm.core.turn.outcome import TurnOutcome
 from solo_dm.core.turn.resolve import resolve_intent
-from solo_dm.core.turn.scene import SceneContext, build_scene
+from solo_dm.core.turn.scene import SceneContext, build_scene, scene_tags
 
 COMPOUND_NOTE = "(Only the first action was done.)"
 NO_RULE_HINT = "so nothing happened. Try saying it another way."
@@ -31,18 +32,58 @@ class TurnRecord(BaseModel):
     flag_note: str | None = None
 
 
+class StoredCampaign(BaseModel):
+    """A campaign as read back: the frozen adventure copy, the turn-0 state, the
+    turns still in play (not superseded by a rewind) and the latest snapshot."""
+
+    campaign_id: int
+    adventure: Adventure
+    initial_state: GameState
+    turns: list[TurnRecord]
+    state: GameState
+
+
 class GameSession:
     def __init__(
-        self, adventure: Adventure, state: GameState, llm: LLMPort, dice: DicePort
+        self,
+        adventure: Adventure,
+        state: GameState,
+        llm: LLMPort,
+        dice: DicePort,
+        store: CampaignStorePort | None = None,
+        campaign_id: int | None = None,
+        turns: list[TurnRecord] | None = None,
+        lore: LorePort | None = None,
     ) -> None:
         self.adventure = adventure
         self.state = state
         self._llm = llm
         self._dice = dice
-        self.turns: list[TurnRecord] = []
+        self._store = store
+        self.campaign_id = campaign_id
+        self.turns: list[TurnRecord] = list(turns or [])
+        self._lore = lore
+
+    @classmethod
+    def start_campaign(cls, store: CampaignStorePort, adventure: Adventure, state: GameState,
+                       llm: LLMPort, dice: DicePort,
+                       lore: LorePort | None = None) -> "GameSession":
+        return cls(adventure, state, llm, dice, store, store.create(adventure, state),
+                   lore=lore)
+
+    @classmethod
+    def resume(cls, store: CampaignStorePort, campaign_id: int, llm: LLMPort,
+               dice: DicePort, lore: LorePort | None = None) -> "GameSession":
+        stored = store.load(campaign_id)
+        return cls(stored.adventure, stored.state, llm, dice, store, campaign_id, stored.turns,
+                   lore)
 
     def scene(self) -> SceneContext:
-        return build_scene(self.state, self.adventure)
+        scene = build_scene(self.state, self.adventure)
+        if self._lore is None:
+            return scene
+        return scene.model_copy(
+            update={"lore": self._lore.search(tags=scene_tags(scene, self.adventure))})
 
     def play_turn(self, actor_id: str, player_input: str) -> TurnRecord:
         scene = self.scene()
@@ -65,14 +106,24 @@ class GameSession:
             actor_id=actor_id, intent=intent, events=resolution.events,
             blocked=resolution.blocked, player_input=player_input,
         )
-        narration = self._llm.narrate(outcome, self.scene())
+        narration = self._llm.narrate(outcome, self._narration_scene(intent))
         if intent.compound:
             narration = f"{narration} {COMPOUND_NOTE}"
         return self._record(actor_id, player_input, intent, None, resolution.events, narration)
 
+    def _narration_scene(self, intent: Intent) -> SceneContext:
+        """The scene after the turn, plus lore the interpreter asked for (plan 3.8)."""
+        scene = self.scene()
+        if self._lore is None or not intent.lore_query:
+            return scene
+        extra = [s for s in self._lore.search(intent.lore_query) if s not in scene.lore]
+        return scene.model_copy(update={"lore": scene.lore + extra})
+
     def flag_last_turn(self, note: str) -> None:
         last = self.turns[-1]
         self.turns[-1] = last.model_copy(update={"flag_note": note})
+        if self._store is not None:
+            self._store.flag_turn(self.campaign_id, last.turn_number, note)
 
     def _interpret(self, player_input: str, scene: SceneContext):
         error = None
@@ -104,6 +155,8 @@ class GameSession:
             fallback=bool(intent and intent.action == "ability_check"),
         )
         self.turns.append(record)
+        if self._store is not None:
+            self._store.record_turn(self.campaign_id, record, self.state)
         return record
 
 

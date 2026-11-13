@@ -77,7 +77,7 @@ def test_builtin_commands_answer_without_a_model_turn():
     assert "pack: empty" in text and "Fighter: 12/12 HP" in text
     assert "* Pillared Hall: south -> Mossy Entrance" in text
     assert "east (unexplored)" in text and "north (unexplored, locked)" in text
-    assert "Saving arrives with campaigns in M4." in text
+    assert "This game is not stored as a campaign." in text
 
 
 def test_pick_up_takes_the_key_instead_of_picking_a_lock():

@@ -179,3 +179,19 @@ def test_next_door_senses_are_left_out_of_a_turn_that_is_not_about_them(llm):
     session = _session(llm, moves=["north"])
     turn = session.play_turn(SOLO_ACTOR, "pick up the tarnished ring")
     assert "smoke" not in turn.narration.lower()
+
+
+def test_asking_what_your_character_remembers_requests_lore(llm):
+    session = _session(llm)
+    intent = _intent(llm, session, "What do I remember hearing about the goblins in these hills?")
+    assert intent.action == "look"
+    assert intent.lore_query and "goblin" in intent.lore_query.lower()
+
+
+def test_the_narrator_answers_from_lore_and_nothing_changes(llm):
+    session = _session(llm)
+    before = session.state
+    turn = session.play_turn(SOLO_ACTOR, "What have I heard about the goblins of these hills?")
+    assert session.state == before and turn.events == []
+    lore_details = ["raid", "band", "hobgoblin", "cowardly", "shiny", "farm", "traveller"]
+    assert any(word in turn.narration.lower() for word in lore_details), turn.narration

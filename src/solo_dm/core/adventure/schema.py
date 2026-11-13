@@ -69,10 +69,14 @@ class ItemPlacement(AdventureModel):
 
     id: str
     name: str
+    # What the item looks and feels like. The narrator uses this and invents no
+    # other properties (play-test flag 12).
+    description: str | None = None
     location: str | None = None
     carried_by: str | None = None
     hidden: Hidden | None = None
     on_take: OnTake | None = None
+    tags: tuple[str, ...] = ()
 
 
 class Lock(AdventureModel):
