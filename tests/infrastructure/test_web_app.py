@@ -1,5 +1,6 @@
 """The web app (M6): a thin FastHTML adapter over the same session as the terminal."""
 
+import re
 from html.parser import HTMLParser
 
 import pytest
@@ -193,3 +194,24 @@ def test_a_post_from_another_site_is_refused_and_plays_no_turn(tmp_path, store):
     assert client.post(url, data={"line": "go north"},
                        headers={**HTMX, "Sec-Fetch-Site": "same-origin"}).status_code == 200
     assert [t.player_input for t in store.load(game.session.campaign_id).turns] == ["go north"]
+
+
+def combat_bar(html: str) -> str | None:
+    """The text of the bar that stays above the input during a fight."""
+    bar = re.search(r'<div class="combat-bar[^"]*">(.*?)</div>', html, re.S)
+    return re.sub(r"<[^>]+>|\s+", " ", bar.group(1)).strip() if bar else None
+
+
+def test_in_a_fight_the_heros_hit_points_stay_above_the_input(tmp_path, store):
+    # Jelle's phone play test, 2026-11-14: "I want the hp of my hero to be always
+    # visible when in a fight."
+    game, _ = open_game(store)
+    run(game, ["go north", "quit"])
+    client = web(tmp_path)
+    url = f"/play/{game.session.campaign_id}"
+    assert combat_bar(client.get(url).text) is None
+    fight = client.post(url, data={"line": "go east"}, headers=HTMX).text
+    hp = SQLiteCampaignStore(tmp_path / "campaigns.db").load(
+        game.session.campaign_id).state.party["hero"].hp
+    assert combat_bar(fight).startswith(f"Fighter {hp}/12 HP")
+    assert combat_bar(client.get(url).text).startswith(f"Fighter {hp}/12 HP")
