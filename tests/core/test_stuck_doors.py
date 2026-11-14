@@ -61,3 +61,15 @@ def test_a_stuck_door_is_called_stuck_not_locked():
     assert blocked("unlock") == "It is not locked but stuck; force it open."
     north = next(e for e in build_scene(start, ADVENTURE).exits if e.direction == "north")
     assert (north.locked, north.stuck) == (False, True)
+
+
+def test_a_door_forced_from_one_side_is_open_from_the_other_too():
+    # One door, two exits (Azzinax: 5a and 6b are the same iron door). Found in
+    # the opening-name pass, 2026-11-14.
+    both_sides = tiny_adventure(entities=[], locks=[
+        {"exit": "hall_to_shrine", "force_dc": 12}, {"exit": "shrine_to_hall", "force_dc": 12}])
+    start = initial_state(both_sides, [fighter()], BESTIARY)
+    resolution = resolve_intent(start, both_sides, "hero",
+                                Intent(action="open", target_id="hall_to_shrine"),
+                                FixedDice([20]))
+    assert apply_events(start, resolution.events).locked_exits == ()

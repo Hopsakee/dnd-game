@@ -139,13 +139,15 @@ def _unlock(state, adventure, actor_id, intent, dice) -> list[Event]:
     if lock.key is None and lock.pick_dc is None:
         raise Blocked("There is no keyhole; something else must open it.")
     if lock.key is not None and lock.key in state.party[actor_id].inventory:
-        return [DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="key")]
+        return [DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="key",
+                         other_side=adventure.other_side(exit_.id))]
     if lock.pick_dc is None:
         raise Blocked("You need the key for this lock.")
     check = ability_check(state.party[actor_id], "DEX", "sleight_of_hand", lock.pick_dc, dice)
     if not check.success:
         return [check]
-    return [check, DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="picked")]
+    return [check, DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="picked",
+                         other_side=adventure.other_side(exit_.id))]
 
 
 def _open(state, adventure, actor_id, intent, dice) -> list[Event]:
@@ -159,7 +161,8 @@ def _open(state, adventure, actor_id, intent, dice) -> list[Event]:
     check = ability_check(state.party[actor_id], "STR", "athletics", lock.force_dc, dice)
     if not check.success:
         return [check]
-    return [check, DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="forced")]
+    return [check, DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="forced",
+                         other_side=adventure.other_side(exit_.id))]
 
 
 # Still roll when nothing is hidden, so a search never gives away that a room is empty.
@@ -230,9 +233,14 @@ def _use_item(state, adventure, actor_id, intent, dice) -> list[Event]:
         ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=use.used_up),
         QuestFlagSet(actor_id=actor_id, flag=use.set_flag),
     ]
-    events += [DoorUnlocked(actor_id=actor_id, exit_id=lock.exit, method="mechanism")
-               for lock in adventure.locks
-               if lock.opens_on_flag == use.set_flag and lock.exit in state.locked_exits]
+    opened: set[str] = set()  # a door locked on both sides opens once
+    for lock in adventure.locks:
+        if (lock.opens_on_flag == use.set_flag and lock.exit in state.locked_exits
+                and lock.exit not in opened):
+            other_side = adventure.other_side(lock.exit)
+            opened |= {lock.exit, other_side}
+            events.append(DoorUnlocked(actor_id=actor_id, exit_id=lock.exit,
+                                       method="mechanism", other_side=other_side))
     if use.set_flag == adventure.win_condition.flag:
         events.append(AdventureWon(actor_id=actor_id))
     return events
