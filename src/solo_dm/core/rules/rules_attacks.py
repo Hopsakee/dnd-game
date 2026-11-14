@@ -6,14 +6,9 @@ defeated (plan section 2: no death saves in v1)."""
 
 from solo_dm.core.ports import DicePort
 from solo_dm.core.rules.dice_expression import parse_dice
-from solo_dm.core.state.combatants import armor_class_of, hp_of, is_party_member
-from solo_dm.core.state.events import (
-    AttackRolled,
-    CharacterDefeated,
-    CreatureDied,
-    DamageDealt,
-    Event,
-)
+from solo_dm.core.rules.rules_defeat import dropped_to_zero
+from solo_dm.core.state.combatants import armor_class_of, hp_of
+from solo_dm.core.state.events import AttackRolled, DamageDealt, Event
 from solo_dm.core.state.models import AttackProfile, Character, GameState
 
 
@@ -67,6 +62,5 @@ def resolve_attack(
         )
     )
     if hp_of(state, target_id) - amount <= 0:
-        dropped = CharacterDefeated if is_party_member(state, target_id) else CreatureDied
-        events.append(dropped(actor_id=attacker_id, target_id=target_id))
+        events.append(dropped_to_zero(state, target_id, attacker_id))
     return events

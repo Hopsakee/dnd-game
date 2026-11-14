@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from solo_dm.core.adventure.schema import Adventure
 from solo_dm.core.state.models import GameState
+from solo_dm.core.turn.scene import SceneExit
 
 # Typed often, so short (play-test flag 10, 2026-11-13). Only the first word is
 # expanded: "a goblin" is "attack goblin".
@@ -17,6 +18,12 @@ def expand_shortcut(line: str) -> str:
     if first.lower() not in SHORTCUTS:
         return line
     return f"{SHORTCUTS[first.lower()]} {rest}".strip()
+
+
+def exit_label(e: SceneExit) -> str:
+    """'north (Pillared Hall, locked)', as the room view lists an exit."""
+    state = ", locked" if e.locked else ", stuck" if e.stuck else ""
+    return f"{e.direction} ({e.leads_to or 'unexplored'}{state})"
 
 
 class MapRoom(BaseModel):

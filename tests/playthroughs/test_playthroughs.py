@@ -123,3 +123,28 @@ def test_scenario_ability_check_fallback_can_fail_and_change_nothing():
     outcome, events, game, _ = play("scenarios/ability_check", lines, seed=0)
     assert outcome == "playing"
     assert set(events) == {"check_rolled"} and game.session.state.quest_flags == ()
+
+
+def test_scenario_stuck_door_is_forced_open():
+    lines = ["go north", "force north"] + ["force north"] * 5 + ["go north", "take lantern"]
+    outcome, events, _, text = play("scenarios/stuck_door", lines)
+    assert "stuck" in text
+    assert "door_unlocked" in events and outcome == "won"
+
+
+def test_scenario_trapped_corridor_springs_its_traps():
+    outcome, events, game, text = play("scenarios/trapped_corridor",
+                                       ["go north", "go north", "take idol"])
+    assert events.count("hazard_sprung") == 2 and outcome == "won"
+    assert "Falling Rocks" in text and "Spike Pit" in text
+
+
+
+def test_scenario_fountain_and_potion_opens_doors_with_a_coin():
+    lines = ["go north", "take coin", "take potion", "toss the coin into the fountain",
+             "go north", "drink the potion", "take crown"]
+    outcome, events, game, text = play("scenarios/fountain_and_potion", lines)
+    assert events.count("door_unlocked") == 2 and "item_used" in events
+    assert "copper_coin" not in game.session.state.party["hero"].inventory
+    assert "potion" not in game.session.state.party["hero"].inventory
+    assert outcome == "won"

@@ -8,10 +8,10 @@ armor_class: 17         # Chain Mail 16 + Defense fighting style 1
 armor: Chain Mail
 proficiency_bonus: 2
 skill_proficiencies: [athletics, intimidation, perception, survival]
+saving_throw_proficiencies: [STR, CON]
 weapons: [greatsword]
 inventory: []
 not_implemented:
   - "Second Wind (needs rests)"
   - "Weapon Mastery (Graze)"
   - "Savage Attacker feat (Soldier background)"
-  - "Saving throws (STR, CON)"

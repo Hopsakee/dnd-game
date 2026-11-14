@@ -46,6 +46,9 @@ class LlmSettings(BaseModel):
 
 class PathSettings(BaseModel):
     adventures: Path
+    # More adventure folders, searched after `adventures` (M7: the private
+    # dnd-adventures repo cloned next to this one). Missing folders are skipped.
+    extra_adventures: list[Path] = []
     srd: Path
     lore: Path
     campaigns: Path
@@ -71,7 +74,8 @@ class AnthropicConnection(BaseModel):
 
 def load_settings(root: Path) -> Settings:
     raw = yaml.safe_load((root / "settings.yaml").read_text())
-    raw["paths"] = {name: root / value for name, value in raw["paths"].items()}
+    raw["paths"] = {name: [root / v for v in value] if isinstance(value, list) else root / value
+                    for name, value in raw["paths"].items()}
     key = dotenv_values(root / ENV_FILE).get("ANTHROPIC_API_KEY")
     return Settings(**raw, api_key=key or None)
 

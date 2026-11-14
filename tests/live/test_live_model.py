@@ -195,3 +195,97 @@ def test_the_narrator_answers_from_lore_and_nothing_changes(llm):
     assert session.state == before and turn.events == []
     lore_details = ["raid", "band", "hobgoblin", "cowardly", "shiny", "farm", "traveller"]
     assert any(word in turn.narration.lower() for word in lore_details), turn.narration
+
+
+# M7: the Azzinax mechanics.
+
+def _scenario(llm, adventure_id, intents=()):
+    """A session in a scenario, moved along with exact intents (no model calls)."""
+    from rich.console import Console
+
+    from solo_dm.core.state.apply import apply_events
+    from solo_dm.core.turn.resolve import resolve_intent
+
+    session = build_terminal_game(adventure_id, SeededDice(0), llm, Console(quiet=True)).session
+    for intent in intents:
+        resolution = resolve_intent(session.state, session.adventure, SOLO_ACTOR,
+                                    Intent(**intent), SeededDice(0))
+        session.state = apply_events(session.state, resolution.events)
+    return session
+
+
+def test_kicking_a_stuck_door_is_open(llm):
+    session = _scenario(llm, "scenarios/stuck_door")
+    intent = _intent(llm, session, "I put my shoulder to the swollen door and shove")
+    assert (intent.action, intent.target_id) == ("open", "passage_to_storeroom")
+
+
+@pytest.mark.parametrize(("text", "item"), [
+    ("I toss the copper coin into the fountain", "copper_coin"),
+    ("drink the potion", "potion"),
+])
+def test_using_a_carried_item_is_use_item(llm, text, item):
+    session = _scenario(llm, "scenarios/fountain_and_potion", [
+        {"action": "take", "target_id": "copper_coin"}, {"action": "take", "target_id": "potion"}])
+    intent = _intent(llm, session, text)
+    assert (intent.action, intent.item_id) == ("use_item", item)
+
+
+def test_a_sprung_trap_is_told_without_mechanics(llm):
+    from solo_dm.core.state.events import DamageDealt, HazardSprung, SavingThrowRolled
+
+    session = _scenario(llm, "scenarios/trapped_corridor")
+    events = [HazardSprung(hazard_id="falling_rocks", name="Falling Rocks"),
+              SavingThrowRolled(actor_id=SOLO_ACTOR, ability="DEX", d20=4, modifier=2, dc=15,
+                                total=6, success=False),
+              DamageDealt(target_id=SOLO_ACTOR, rolls=[3], modifier=0, amount=3,
+                          damage_type="bludgeoning")]
+    outcome = TurnOutcome(actor_id=SOLO_ACTOR, events=events, intent=Intent(
+        action="move", target_id="landing_to_corridor", approach="walk north"))
+    text = llm.narrate(outcome, session.scene()).lower()
+    assert any(w in text for w in ("rock", "stone", "rubble"))
+    assert not any(w in text for w in ("saving throw", "dc", "dexterity"))
+
+
+def test_the_guardian_rescue_names_the_guardian(llm):
+    from solo_dm.core.state.events import DamageDealt, GuardianRescued
+
+    session = _scenario(llm, "scenarios/fountain_and_potion")
+    events = [DamageDealt(target_id=SOLO_ACTOR, rolls=[6], modifier=0, amount=6,
+                          damage_type="slashing"),
+              GuardianRescued(target_id=SOLO_ACTOR, guardian="Spirit of the Fountain")]
+    outcome = TurnOutcome(actor_id=SOLO_ACTOR, events=events, intent=Intent(
+        action="look", approach="look around"))
+    assert "spirit" in llm.narrate(outcome, session.scene()).lower()
+
+
+# The first Haiku run of Revenge of Azzinax, 2026-11-14.
+
+def test_attacking_one_of_two_identical_creatures_is_not_asked_back(llm):
+    session = _scenario(llm, "core_five_rooms")
+    two = session.scene().model_copy(update={"creatures": [
+        c.model_copy(update={"creature_id": f"baboon_{n}", "name": "Baboon"})
+        for n in (1, 2) for c in [_goblin_in(llm)]]})
+    intent = Intent.model_validate(llm.interpret("attack the baboon", two))
+    assert intent.action == "attack" and intent.confidence != "low"
+    assert intent.target_id in ("baboon_1", "baboon_2")
+
+
+def _goblin_in(llm):
+    session = _session(llm, moves=["north", "east"])
+    return next(c for c in session.scene().creatures)
+
+
+def test_an_item_noticed_on_entering_is_not_taken_in_the_narration(llm):
+    from solo_dm.core.state.events import HiddenFound, LocationDiscovered, MovedTo
+
+    session = _session(llm, moves=["north"])
+    events = [MovedTo(actor_id=SOLO_ACTOR, location_id="hall"),
+              LocationDiscovered(actor_id=SOLO_ACTOR, location_id="hall"),
+              HiddenFound(actor_id=SOLO_ACTOR, target_id="tarnished_ring", method="passive")]
+    outcome = TurnOutcome(actor_id=SOLO_ACTOR, events=events, intent=Intent(
+        action="move", target_id="entrance_to_hall", approach="go north"))
+    text = llm.narrate(outcome, session.scene()).lower()
+    assert "ring" in text
+    assert not any(w in text for w in ("pocket", "you take", "pick it up", "you pick up",
+                                       "tuck", "slip it"))

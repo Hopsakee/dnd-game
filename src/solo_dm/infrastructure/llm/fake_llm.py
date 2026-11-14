@@ -14,8 +14,9 @@ from solo_dm.core.turn.scene import SceneContext
 VERBS = [
     ("take", ["take", "grab", "get", "pick up"]),
     ("unlock", ["unlock", "pick the lock", "pick lock", "pick", r"use\b.*\bkey"]),
+    ("use_item", ["use", "drink", "quaff", "toss", "throw"]),
     ("attack", ["attack", "hit", "fight", "kill", "strike", "stab"]),
-    ("open", ["open"]),
+    ("open", ["open", "force", "break", "kick", "shove"]),  # a stuck door is forced open
     ("search", ["search", "loot", "frisk", "rummage"]),
     ("look", ["look", "examine"]),
     ("move", ["go", "move", "walk", "head", "run", "enter", "north", "south", "east", "west"]),
@@ -26,7 +27,8 @@ STOPWORDS = {"the", "a", "an", "to", "at", "of"}
 CHECKS = [
     (["persuade", "convince", "talk", "bribe", "charm"], "CHA", "persuasion"),
     (["intimidate", "threaten"], "CHA", "intimidation"),
-    (["climb", "jump", "swim", "force", "break"], "STR", "athletics"),
+    (["climb", "jump", "swim"], "STR", "athletics"),
+    (["balance", "leap", "swing", "tumble"], "DEX", "acrobatics"),
 ]
 
 
@@ -47,7 +49,9 @@ class FakeLLM(LLMPort):
             intent |= {"action": action, "ability": check[1], "skill": check[2],
                        "task_category": "medium"}
         target = _target(action, words, scene)
-        if target:
+        if target and action == "use_item":
+            intent["item_id"] = target
+        elif target:
             intent["target_id"] = target
         return intent
 
@@ -71,7 +75,7 @@ def _target(action: str, words: set[str], scene: SceneContext) -> str | None:
     if action in ("move", "unlock", "open"):
         found = [e.exit_id for e in scene.exits if _matches(words, e.direction, e.leads_to)]
         if not found and action != "move":
-            found = [e.exit_id for e in scene.exits if e.locked]
+            found = [e.exit_id for e in scene.exits if e.locked or e.stuck]
     elif action == "attack":
         alive = [c for c in scene.creatures if c.alive]
         found = [c.creature_id for c in alive if _matches(words, c.creature_id, c.name)]
@@ -87,6 +91,9 @@ def _target(action: str, words: set[str], scene: SceneContext) -> str | None:
     elif action == "ability_check":
         found = [c.creature_id for c in scene.creatures
                  if c.alive and _matches(words, c.creature_id, c.name)]
+    elif action == "use_item":
+        found = [i.item_id for m in scene.party for i in m.inventory
+                 if _matches(words, i.item_id, i.name)]
     elif action == "take":
         found = [i.item_id for i in scene.items if _matches(words, i.item_id, i.name)]
     else:
@@ -99,6 +106,7 @@ def _names(scene: SceneContext) -> dict[str, str]:
     names |= {m.character_id: m.name for m in scene.party}
     names |= {i.item_id: i.name for i in scene.items}
     names |= {i.item_id: i.name for m in scene.party for i in m.inventory}
+    names |= {h.hazard_id: h.name for h in scene.hazards}
     return names
 
 
@@ -124,12 +132,27 @@ def _describe(event, names: dict[str, str], scene: SceneContext) -> str:
         case "check_rolled" if event.skill == "perception":
             # No DC: it would tell whether anything is hidden here.
             return f"{actor} searches (rolls {event.total})."
+        case "hazard_sprung":
+            return f"{event.name}!"
+        case "saving_throw_rolled":
+            result = "dodges" if event.success else "fails to dodge"
+            return f"{actor} {result} ({event.total} vs DC {event.dc})."
         case "quest_flag_set":
             return "That worked."
         case "check_rolled":
             return f"{actor} tries ({event.total} vs DC {event.dc}): " + (
                 "success." if event.success else "failure."
             )
+        case "door_unlocked" if event.method == "mechanism":
+            return "Somewhere a door grinds open."
+        case "item_used":
+            return f"{actor} uses the {event.name}."
+        case "healed":
+            return f"{names[event.target_id]} regains {event.amount} hit points."
+        case "guardian_rescued":
+            return f"{event.guardian} pulls {names[event.target_id]} back from the brink!"
+        case "door_unlocked" if event.method == "forced":
+            return "The door gives way with a crack."
         case "door_unlocked":
             return "The lock clicks open."
         case "hidden_found":

@@ -16,6 +16,7 @@ class SceneExit(BaseModel):
     direction: str
     leads_to: str | None  # location name once discovered
     locked: bool
+    stuck: bool = False  # closed but not locked: forced open, not unlocked (M7)
 
 
 class SceneCreature(BaseModel):
@@ -48,6 +49,13 @@ class ScenePartyMember(BaseModel):
     inventory: list[SceneItem]
 
 
+class SceneHazard(BaseModel):
+    """A trap or hazard here that the party has noticed and so avoids."""
+
+    hazard_id: str
+    name: str
+
+
 class SceneSense(BaseModel):
     direction: str  # the exit it comes through
     senses: str
@@ -59,6 +67,7 @@ class SceneContext(BaseModel):
     description: str
     exits: list[SceneExit]
     nearby: list[SceneSense] = []
+    hazards: list[SceneHazard] = []
     creatures: list[SceneCreature]
     items: list[SceneItem]
     party: list[ScenePartyMember]
@@ -101,7 +110,8 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
                 leads_to=adventure.location(e.to).name
                 if e.to in state.discovered_locations
                 else None,
-                locked=e.id in state.locked_exits,
+                locked=e.id in state.locked_exits and not _stuck(adventure, e.id),
+                stuck=e.id in state.locked_exits and _stuck(adventure, e.id),
             )
             for e in location.exits
             if e.id not in state.hidden_unfound
@@ -110,6 +120,12 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
             SceneSense(direction=e.direction, senses=adventure.location(e.to).senses)
             for e in location.exits
             if e.id not in state.hidden_unfound and adventure.location(e.to).senses
+        ],
+        hazards=[
+            SceneHazard(hazard_id=h.id, name=h.name)
+            for h in location.hazards
+            if h.hidden is not None and h.id not in state.hidden_unfound
+            and h.id not in state.sprung_hazards
         ],
         creatures=[
             SceneCreature(
@@ -140,3 +156,8 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
         in_combat=state.in_combat,
         active_combatant=active_combatant(state),
     )
+
+
+def _stuck(adventure: Adventure, exit_id: str) -> bool:
+    lock = adventure.lock(exit_id)
+    return lock is not None and lock.stuck

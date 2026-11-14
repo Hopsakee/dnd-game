@@ -14,6 +14,9 @@ llm:
   narrator: {max_tokens: 4096, effort: medium}   # model: claude-sonnet-5-5 to try Sonnet
 paths:
   adventures: adventures
+  # The books (M7): the private repo dnd-adventures, cloned next to this one.
+  # Skipped when it is not there. In Docker, compose.yaml mounts it there.
+  extra_adventures: [../dnd-adventures]
   srd: srd
   lore: lore
   campaigns: campaigns

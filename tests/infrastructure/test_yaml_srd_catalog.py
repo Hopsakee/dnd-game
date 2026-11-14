@@ -45,3 +45,13 @@ def test_a_character_naming_an_unknown_weapon_fails_loudly(tmp_path):
     )
     with pytest.raises(ValueError, match="greatsword"):
         YamlSrdCatalog(tmp_path).premade_character("broken", character_id="x", player_id="y")
+
+
+def test_the_premade_fighter_is_proficient_in_strength_and_constitution_saves():
+    from pathlib import Path
+
+    from solo_dm.infrastructure.srd.yaml_srd_catalog import YamlSrdCatalog
+
+    root = Path(__file__).resolve().parents[2] / "srd"
+    hero = YamlSrdCatalog(root).premade_character("fighter_level_1", "hero", "jelle")
+    assert hero.saving_throw_proficiencies == ("STR", "CON")

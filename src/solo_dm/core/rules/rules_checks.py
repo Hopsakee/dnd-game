@@ -1,7 +1,8 @@
-"""Ability checks (SRD 5.2): d20 + ability modifier (+ proficiency) vs DC."""
+"""Ability checks and saving throws (SRD 5.2): d20 + ability modifier
+(+ proficiency) vs DC."""
 
 from solo_dm.core.ports import DicePort
-from solo_dm.core.state.events import CheckRolled
+from solo_dm.core.state.events import CheckRolled, SavingThrowRolled
 from solo_dm.core.state.models import Ability, Character
 
 
@@ -28,4 +29,16 @@ def ability_check(
         dc=dc,
         total=total,
         success=total >= dc,
+    )
+
+
+def saving_throw(character: Character, ability: Ability, dc: int, dice: DicePort
+                 ) -> SavingThrowRolled:
+    modifier = character.abilities.modifier(ability)
+    if ability in character.saving_throw_proficiencies:
+        modifier += character.proficiency_bonus
+    d20 = dice.roll("1d20").rolls[0]
+    return SavingThrowRolled(
+        actor_id=character.character_id, ability=ability, d20=d20, modifier=modifier,
+        dc=dc, total=d20 + modifier, success=d20 + modifier >= dc,
     )
