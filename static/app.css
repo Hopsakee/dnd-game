@@ -1,0 +1,165 @@
+/* solo-dm web app. Mobile first: one column, big tap targets, the input and
+   quick actions stay at the bottom of the screen while the story scrolls. */
+
+:root {
+  --bg: #f6f3ec;
+  --fg: #22201c;
+  --muted: #6d675d;
+  --line: #d8d1c2;
+  --panel: #fffdf8;
+  --accent: #7a3e12;
+  --accent-fg: #ffffff;
+  --you: #1f4e79;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1a18;
+    --fg: #ebe6dc;
+    --muted: #a39d92;
+    --line: #3a3732;
+    --panel: #24221f;
+    --accent: #d08a4e;
+    --accent-fg: #1b1a18;
+    --you: #8db8e3;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.5 Georgia, "Iowan Old Style", serif;
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 16px 1rem;
+}
+
+a { color: var(--accent); }
+
+h1 { font-size: 1.5rem; margin: 1rem 0 0.5rem; }
+h2 { font-size: 1.15rem; margin: 1rem 0 0.25rem; }
+
+nav.top, nav.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0.6rem 0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.95rem;
+}
+
+nav.top { border-bottom: 1px solid var(--line); }
+
+nav.tabs a {
+  padding: 0.3rem 0.1rem;
+  text-decoration: none;
+}
+
+nav.tabs a.here {
+  color: var(--fg);
+  border-bottom: 2px solid var(--accent);
+}
+
+ul.menu { list-style: none; padding: 0; }
+ul.menu li { padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+
+.muted { color: var(--muted); }
+.warn { color: #b3261e; }
+.outcome { font-weight: bold; font-size: 1.1rem; }
+
+details#room {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+details#room summary { cursor: pointer; font-weight: bold; }
+.room-name { font-weight: bold; }
+
+#log .entry { margin: 0 0 1rem; }
+#log p { margin: 0.25rem 0; white-space: pre-line; }
+#log .you {
+  color: var(--you);
+  font-family: system-ui, sans-serif;
+  font-size: 0.95rem;
+}
+#log .you::before { content: "› "; }
+#log .room-entry {
+  border-left: 3px solid var(--line);
+  padding-left: 0.6rem;
+}
+
+.controls {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  padding: 0.5rem 0 0.75rem;
+}
+
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+button {
+  font: inherit;
+  font-family: system-ui, sans-serif;
+  font-size: 0.95rem;
+  min-height: 44px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+button.quick {
+  background: var(--panel);
+  color: var(--fg);
+  border-color: var(--line);
+  min-height: 40px;
+  padding: 0.3rem 0.7rem;
+}
+
+form.row { display: flex; gap: 0.5rem; }
+
+input[name="line"], select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg);
+}
+
+table.abilities { border-collapse: collapse; width: 100%; font-family: system-ui, sans-serif; }
+table.abilities th, table.abilities td {
+  border: 1px solid var(--line);
+  padding: 0.3rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+pre { white-space: pre-wrap; font-size: 0.85rem; }
+
+.map svg { width: 100%; height: auto; max-height: 70vh; }
+.map .link { stroke: var(--muted); stroke-width: 3; }
+.map .room rect { fill: var(--panel); stroke: var(--muted); stroke-width: 2; }
+.map .room text { fill: var(--fg); font: 14px system-ui, sans-serif; }
+.map .room.current rect { fill: var(--accent); stroke: var(--accent); }
+.map .room.current text { fill: var(--accent-fg); font-weight: bold; }

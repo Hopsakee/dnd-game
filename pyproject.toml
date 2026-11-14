@@ -10,6 +10,8 @@ dependencies = [
     "python-dotenv>=1.2",
     "rich>=15.0.0",
     "anthropic>=2.6.0",
+    "python-fasthtml>=0.14.12",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]

@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 from rich.console import Console
 
+from solo_dm.core.turn.player_view import expand_shortcut, known_map
 from solo_dm.core.turn.session import GameSession
 from solo_dm.infrastructure.llm.cost_log import LLMUnavailable
 
@@ -14,18 +15,6 @@ HELP = (
     "Anything else is an action, e.g. 'go north', 'attack goblin', 'search', "
     "'search goblin', 'take key'."
 )
-
-
-# Typed often, so short (play-test flag 10, 2026-11-13). Only the first word is
-# expanded: "a goblin" is "attack goblin".
-SHORTCUTS = {"a": "attack", "n": "go north", "s": "go south", "e": "go east", "w": "go west"}
-
-
-def expand_shortcut(line: str) -> str:
-    first, _, rest = line.partition(" ")
-    if first.lower() not in SHORTCUTS:
-        return line
-    return f"{SHORTCUTS[first.lower()]} {rest}".strip()
 
 
 class TerminalGame:
@@ -142,15 +131,12 @@ class TerminalGame:
         return "\n".join(lines)
 
     def _map(self) -> str:
-        state, adventure = self.session.state, self.session.adventure
+        known = known_map(self.session.state, self.session.adventure)
+        names = {r.location_id: r.name for r in known.rooms}
         lines = []
-        for location_id in state.discovered_locations:
-            location = adventure.location(location_id)
-            links = ", ".join(
-                f"{e.direction} -> {adventure.location(e.to).name}"
-                for e in location.exits
-                if e.to in state.discovered_locations and e.id not in state.hidden_unfound
-            )
-            marker = "* " if location_id == state.party_location else "  "
-            lines.append(f"{marker}{location.name}: {links or 'no known connections'}")
+        for room in known.rooms:
+            links = ", ".join(f"{k.direction} -> {names[k.to_id]}"
+                              for k in known.links if k.from_id == room.location_id)
+            marker = "* " if room.current else "  "
+            lines.append(f"{marker}{room.name}: {links or 'no known connections'}")
         return "\n".join(lines)

@@ -82,6 +82,47 @@ only colours interpretation and narration; it never changes what happens. Items
 in an adventure may have a `description`, which the narrator follows instead of
 inventing properties.
 
+M6: the web app, for playing from a phone. The same campaigns as the terminal:
+a game started in one resumes in the other.
+
+```bash
+uv run solo-dm web                        # http://127.0.0.1:5001
+uv run solo-dm web --port 8080
+```
+
+Home offers to continue the latest campaign; Campaigns lists them all and starts
+a new game. In a campaign: Play (the story, a box with the room, buttons for
+what can be done here and an input line that takes the same shortcuts and
+commands as the terminal), Character, Inventory and Map (the discovered rooms,
+yours highlighted). Cost shows the model spend.
+
+It listens on 127.0.0.1 only. Tailscale is the only gate: the app has no login.
+
+To play from the phone, run it in Docker (`Dockerfile`, `compose.yaml`) next to
+a Tailscale container that joins the tailnet as the machine `solo-dm` and
+forwards `https://solo-dm.<tailnet>.ts.net` to the game. No port is published
+on the host. On the Mac mini (OrbStack), in a clone of this repo:
+
+```bash
+echo 'TS_AUTHKEY=tskey-auth-...' > .env.tailscale   # from the Tailscale admin console
+echo 'ANTHROPIC_API_KEY=...' > .env.solo_dm         # mounted read-only, not in the image
+docker compose up -d --build
+docker compose logs -f                              # the tailnet address appears here
+docker compose exec solo-dm solo-dm play            # terminal play, same campaigns
+```
+
+Campaigns and the cost log live in the volumes `campaigns` and `logs`, not in
+the clone. The image installs the exact versions `uv.lock` pins, from PyPI (the
+lock itself names the development box's wheel store). After the first login the
+`tailscale-state` volume keeps the machine on the tailnet, so `.env.tailscale`
+can go.
+
+The app is built with `FastHTML()` and serves only `static/`. htmx 2.0.7 and
+fasthtml.js 1.0.12 are vendored in `static/vendor/`, so pages load nothing from
+a CDN; upgrading htmx means replacing that file. Not `fast_app()`: it adds a
+route that serves any `.yaml`, `.txt` and similar file under the working
+directory, `..` included.
+
 ## Commands
 
 ```bash
