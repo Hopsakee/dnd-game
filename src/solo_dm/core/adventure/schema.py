@@ -171,6 +171,13 @@ class Adventure(AdventureModel):
     def exit(self, exit_id: str) -> Exit:
         return next(e for loc in self.locations for e in loc.exits if e.id == exit_id)
 
+    def other_side(self, exit_id: str) -> str | None:
+        """The exit back through the same door: the one way from the destination
+        to here, or None when there are several (two doors between two rooms)."""
+        origin = next(loc.id for loc in self.locations for e in loc.exits if e.id == exit_id)
+        back = [e.id for e in self.location(self.exit(exit_id).to).exits if e.to == origin]
+        return back[0] if len(back) == 1 else None
+
     def item(self, item_id: str) -> ItemPlacement:
         return next(i for i in self.items if i.id == item_id)
 

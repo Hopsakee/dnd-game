@@ -42,6 +42,24 @@ def test_using_the_item_where_it_belongs_opens_every_door_on_that_flag():
     assert "coin" not in after.party["hero"].inventory  # used up
 
 
+def test_a_door_locked_on_both_sides_opens_once():
+    # Azzinax: 3b and 5d are one door; the narrator should hear one door, not two.
+    both = tiny_adventure(
+        entities=[], locations=[HALL, *BASE["locations"][1:]],
+        items=[{"id": "coin", "name": "Copper Coin", "location": "hall"}, *BASE["items"][1:]],
+        locks=[{"exit": "hall_to_shrine", "opens_on_flag": "fountain_paid"},
+               {"exit": "shrine_to_hall", "opens_on_flag": "fountain_paid"},
+               {"exit": "hall_to_den", "opens_on_flag": "fountain_paid"}])
+    start = initial_state(both, [fighter()], BESTIARY)
+    start = apply_events(start, resolve_intent(start, both, "hero",
+                         Intent(action="take", target_id="coin"), FixedDice([])).events)
+    resolution = resolve_intent(start, both, "hero", Intent(action="use_item", item_id="coin"),
+                                FixedDice([]))
+    doors = [e.exit_id for e in resolution.events if e.type == "door_unlocked"]
+    assert sorted(doors) == ["hall_to_den", "hall_to_shrine"]
+    assert apply_events(start, resolution.events).locked_exits == ()
+
+
 def test_doors_on_a_flag_cannot_be_unlocked_picked_or_forced():
     start = holding_the_coin()
     for action in ("unlock", "open"):

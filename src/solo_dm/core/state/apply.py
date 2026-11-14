@@ -62,8 +62,8 @@ def apply_event(state: GameState, event: Event) -> GameState:
         case LocationDiscovered(location_id=location_id):
             discovered = (*state.discovered_locations, location_id)
             return state.model_copy(update={"discovered_locations": discovered})
-        case DoorUnlocked(exit_id=exit_id):
-            locked = tuple(e for e in state.locked_exits if e != exit_id)
+        case DoorUnlocked(exit_id=exit_id, other_side=other_side):
+            locked = tuple(e for e in state.locked_exits if e not in (exit_id, other_side))
             return state.model_copy(update={"locked_exits": locked})
         case ItemTaken(actor_id=actor_id, item_id=item_id):
             floor = {i: loc for i, loc in state.items_on_floor.items() if i != item_id}
