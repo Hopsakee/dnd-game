@@ -9,6 +9,7 @@ StaticFiles, which refuses paths that leave it. htmx and fasthtml.js are
 vendored there, so the pages load nothing from a CDN."""
 
 import json
+import secrets
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -82,6 +83,9 @@ class WebServices:
 def create_web_app(services: WebServices) -> FastHTML:
     app = FastHTML(
         htmx=False, surreal=False, title="solo-dm",
+        # The app keeps nothing in the session, so a fresh key per start will do,
+        # and FastHTML then writes no .sesskey file into the working directory.
+        secret_key=secrets.token_hex(32),
         hdrs=(Meta(name="viewport", content="width=device-width, initial-scale=1"),
               Script(src="/static/vendor/htmx.min.js"),
               Script(src="/static/vendor/fasthtml.js"),

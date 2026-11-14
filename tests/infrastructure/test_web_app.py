@@ -168,3 +168,11 @@ def test_the_landing_page_offers_to_continue_the_latest_campaign(tmp_path, store
 def test_an_unknown_campaign_says_so(tmp_path):
     page = web(tmp_path).get("/play/99")
     assert page.status_code == 404 and "no campaign 99" in page.text
+
+
+def test_starting_the_app_writes_no_session_key_file(tmp_path, monkeypatch):
+    # FastHTML writes .sesskey into the working directory unless given a key; in
+    # the container that directory is read-only to the app (_DEPLOY_FASTHTML).
+    monkeypatch.chdir(tmp_path)
+    web(tmp_path)
+    assert not (tmp_path / ".sesskey").exists()

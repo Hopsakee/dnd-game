@@ -29,8 +29,8 @@ Working project name: `solo_dm` (rename freely before the first commit).
 | Ruleset | D&D 5e **SRD 5.2** (CC-BY-4.0, credit in README) |
 | Rules in v1 | One pre-made character (level 1 Fighter), ability checks, attack rolls, damage, hit points, only the conditions the test adventure needs. No spellcasting, levelling, rests or party members yet. |
 | Narration language | English (all data, code and prompts in English too) |
-| Host | Runs locally on Jelle's Mac mini; reachable from phone via Tailscale. No public hosting. |
-| Development | Built by Claude Code in Jelle's box (container on the Mac mini), in a GitHub repo cloned with `ensure-repo`; changes land as PRs via `open-pr`. Where the game runs for phone play (box or host) is decided at M6. |
+| Host | A Docker container, reachable from the phone only over Tailscale (a Tailscale sidecar container; no public hosting). Runs on the Mac mini under OrbStack; the same image moves unchanged to NixOS (planned for the Mac mini) or a server. Decided by Jelle 2026-11-14: Linux everywhere, and Tailscale rather than Caddy + Authelia because the app spends on a company Claude API key. Supersedes "runs locally on the Mac mini" (2026-11-10). |
+| Development | Built by Claude Code in Jelle's box (container on the Mac mini), in a GitHub repo cloned with `ensure-repo`; changes land as PRs via `open-pr`. Where the game runs for phone play: see Host (decided at M6). |
 | Model while building | **Claude Haiku 5.5** (`claude-haiku-5-5`) via the Anthropic API, for both interpreter and narrator. If narration reads flat, try Sonnet 5.5 for the narrator only: a settings change, judged in play. |
 | Model fallback | If budget becomes a concern: Mistral (preferred) or a router such as OpenRouter. Switching must be a config change plus one adapter class. |
 | Interface order | Terminal harness first (development + tests), web app as later milestone |
@@ -41,7 +41,7 @@ Working project name: `solo_dm` (rename freely before the first commit).
 | Maps v1 | Node map of discovered rooms and connections. Combat positioning abstract (melee / range). No grid. |
 | Architecture | Two-layer core/infrastructure (ports & adapters), core split by domain, dependency rule enforced by import-linter |
 | Multiplayer | Future goal: up to 5 players. v1 is solo, but party, `actor_id` and turn order are built in from M1 (see 3.4). Multiplayer features themselves come later (see 9). |
-| Architecture guide | `solo-python-architecture-guide.md` applies for layering, ports, Pydantic-in-core and testing. Its deployment sections (Docker Compose, Caddy, Authelia, Granian, `X-Forwarded-User`) do **not** apply: this app runs as one local process behind Tailscale. |
+| Architecture guide | `solo-python-architecture-guide.md` applies for layering, ports, Pydantic-in-core and testing. Its deployment sections (Caddy, Authelia, Granian, `X-Forwarded-User`) do **not** apply: this app runs as one container behind a Tailscale sidecar, with no login of its own. |
 | Character at 0 HP | v1: the character is **defeated** and the adventure is lost. No death saving throws, no unconscious state. Revisit when party members exist (someone could then stabilise you). |
 | Monster behaviour | Decided by Python, never by the model. v1: a hostile creature attacks a random conscious party member in reach; it never flees. Richer tactics grow by evidence. |
 
@@ -312,7 +312,7 @@ Writes for one turn happen in a single transaction.
 
 ### 5.2 Web app (milestone 6)
 
-- FastHTML + HTMX, served on the Mac mini, reached over Tailscale. No separate auth layer; Tailscale is the perimeter.
+- FastHTML + HTMX in a Docker container (see Host), reached over Tailscale. No separate auth layer; Tailscale is the perimeter.
 - Mobile-first layout: narration stream, input box, quick-action buttons for common actions and built-in commands.
 - Character sheet view, inventory view, node map (discovered rooms and connections, current location highlighted).
 - Landing page with a menu linking to every screen (campaigns, play, character, map, cost log).
@@ -442,7 +442,7 @@ Out of scope: traps, secret-door mechanisms, hidden creatures and Stealth, time 
 - Spellcasting, levelling, rests, multiple party members, companions.
 - Grid maps and positional combat.
 - Embedding-based (semantic) lore search.
-- Docker, reverse proxies, public hosting or separate auth.
+- Reverse proxies, public hosting or separate auth. (Docker is in since M6: see Host.)
 - Narration in languages other than English.
 - **Multiplayer features** (planned later; data model already prepared):
   - Collecting out-of-combat input from several players into one turn (the main open design question; decide after solo play works).
