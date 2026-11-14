@@ -77,7 +77,8 @@ solo_dm/
 ├── srd/                      # SRD 5.2 data needed by the engine (monsters, items)
 ├── campaigns/                # SQLite campaign files — gitignored
 ├── evals/                    # ingestion evals and the repo's own test book (M8)
-├── src/adventure_ingest/     # book -> adventure YAML (M8); imports only solo_dm.core.adventure
+├── src/adventure_ingest/     # extract/check/assemble/verify/eval for M8; imports only solo_dm.core.adventure
+├── plugins/adventure-converter/  # M8: the converter agent and its skills (Claude Code plugin)
 ├── src/solo_dm/
 │   ├── core/
 │   │   ├── rules/            # checks, attacks, damage, conditions, difficulty
@@ -453,28 +454,44 @@ The gold adventure: `revenge_of_azzinax/` in the private repo `dnd-adventures` (
 - The game reads adventures from both places: `settings.yaml` gets a second adventures path, and `compose.yaml` mounts a clone of `dnd-adventures` read-only, so no image contains a copyrighted adventure.
 - Supersedes "a gitignored `adventures/private/`" (2026-11-13).
 
-### M8 — Ingestion: book to adventure, a separate application
-Decided by Jelle 2026-11-14: converting a book is its own application, not part of the game. Same repo, separate package and command, its own tests and evals.
+### M8 — Ingestion: a converter agent in Claude Code
+Decided by Jelle 2026-11-14 (supersedes the same day's "separate application" with model steps run by hand or through the API). Converting a book is judgement, not extraction: what is a challenge and what is its goal, which door seals from which side, who belongs to which group. Those were the Azzinax errors, and a stronger model alone would not have caught them; a question to Jelle would. Jelle converts at most four books a year, so half an hour of steering per book is cheaper than a pipeline, and a flaw is fixed by adding a rule or example to one skill. It runs on his subscription (Fable or Opus), in Claude Code, later Cowork.
 
-- **Package `src/adventure_ingest/`** with the command `uv run adventure-ingest`. It may import the engine's adventure schema (`solo_dm.core.adventure`, plus the models that schema uses) and nothing else from `solo_dm`; `solo_dm` never imports it. The architecture test enforces both.
-- **Stages with files between them.** Each stage reads the previous stage's file and writes its own, in a work folder per book in `dnd-adventures` (`ingest/<book>/`), so the manual answers are kept and versioned. So a stage can be rerun, inspected, or done by hand by writing its file:
-  1. `extract`: PDF (or Fantasy Grounds XML) to text and page images, plus a report of pages that are images with little text (Azzinax page 6).
-  2. Model steps, one per part: locations and their descriptions; links between locations; stat blocks; items, locks, checks and hazards; the goal. Each can run **by hand**. The command writes a structured prompt and lists the files to attach (e.g. the map image), Jelle runs it in a Claude chat (Fable), saves the answer in the work folder, and `adventure-ingest check <part>` validates it at once. Running a step through the API instead is a later option, the same prompt with a different runner.
-  3. `assemble`: the parts into one `adventure.yaml`, validated by the engine's schema.
-  4. `verify`: deterministic playability checks. Every location is reachable; no key is behind its own lock; the win flag can be set; every monster has a stat block; every obstacle can be passed by the hero's abilities. Every flag the win or a lock depends on is set by a challenge (a check with a goal), an item or a use, never by a roll the model must guess (Azzinax play test, 2026-11-14).
-- **Evals**, in `evals/` and run with `uv run adventure-ingest eval <book>`: the output of a stage against the gold adventure, field by field (locations, links, monsters and where they are, items, locks, checks, hazards, the goal), as precision and recall per field. A model judge only for fuzzy fields, such as whether a description kept its key details. Every in-game error traced back to ingestion becomes a new eval case.
-- **Copyright and evals:** the gold adventures of bought or personal-use books live only in the private `dnd-adventures`, so their evals run only where that repo is. For evals that run anywhere (and in `pytest`), the repo gets one small book of our own: an original adventure written as a PDF with a map image, plus its gold.
-- SRD 5.2 versus 2014 stat-block layouts are handled in the stat-block step.
+- **An agent, run as the session itself.** `plugins/adventure-converter/` in this repo is a Claude Code plugin: one agent (`adventure-converter`) plus one skill per domain. Jelle starts Claude Code *as* the agent (`claude --agent …`; the exact command, with the plugin, is verified and written in the README in M8), so it can ask him whenever it is unsure. A sub-agent cannot ask the user anything, so sub-agents are only for heavy, self-contained reading (the map image, a page of stat blocks), and return a draft file plus a list of questions the agent puts to Jelle.
+- **The agent's context:** the adventure schema (generated from the Pydantic models, never retyped), the SRD 5.2 monsters and items in `srd/`, the map convention below, and the gold Azzinax only as a description of what good looks like (no book text in this repo).
+- **One skill per domain the engine can hold today:**
+  | Skill | Writes |
+  |---|---|
+  | `map` | `map.yaml`: rooms, corridors, openings and what each meets (the convention below), then the locations and exits |
+  | `challenges` | every check as a challenge: id, goal, ability, skill, DC, what success sets |
+  | `creatures` | SRD reference or own stat block, place, attitude, group, activity, the check that talks one round |
+  | `items-locks-hazards` | items and their uses, locks on both sides of a door, hazards, the win flag |
+  Domains the engine cannot hold yet are listed below as later work; a skill never extracts what no engine field reads.
+- **Stage files in `dnd-adventures/ingest/<book>/`,** one per skill plus `questions.md` (every question the agent asked and Jelle's answer). A stage can be reviewed, corrected or redone the next day without the rest. `questions.md` is where skill improvements come from: a question asked for every book is a rule the skill lacks.
+- **The code stays code,** in `src/adventure_ingest/` (command `uv run adventure-ingest`), called by the agent through the shell. It may import the engine's adventure schema (`solo_dm.core.adventure` and the models it uses) and nothing else from `solo_dm`; `solo_dm` never imports it; the architecture test enforces both.
+  1. `extract`: PDF (or Fantasy Grounds XML) to text and page images, plus a report of pages that are images with little text (Azzinax page 6). `pymupdf4llm`.
+  2. `check <stage>`: validates one stage file at once, e.g. every opening in `map.yaml` has a partner that names it back.
+  3. `assemble`: the stage files into one `adventure.yaml`, validated by the engine's schema.
+  4. `verify`, **the hard gate**: the agent is not done until it passes. Every location is reachable; no key is behind its own lock; a locked door is locked on both sides; every id referred to exists; the win flag can be set; every monster has a stat block; every obstacle can be passed by the hero's abilities; every flag the win or a lock depends on is set by a challenge, an item or a use, never by a roll the model must guess (Azzinax play test, 2026-11-14).
+- **Evals**, `uv run adventure-ingest eval <book>`: a conversion against the gold adventure, field by field (locations, links, monsters and where they are, items, locks, checks, hazards, the goal), as precision and recall per field. They tell whether a change to a skill made conversions better or worse. Every in-game error traced back to conversion becomes an eval case or a `verify` rule.
+- **Copyright:** the plugin and its skills hold no book text; examples come from the repo's own small test book (an original adventure, PDF plus map image, plus its gold, in `evals/`). Gold adventures of bought books live only in `dnd-adventures`. `pytest` covers the code (`extract`, `check`, `assemble`, `verify`, `eval`) on the own test book; the agent itself is tested by a conversion and its eval report, not in `pytest`.
+- SRD 5.2 versus 2014 stat-block layouts are handled in the `creatures` skill.
 
-**The map step's convention (Jelle, 2026-11-14).** The links step reads the map into a `map.yaml` of named openings; the gold one is `dnd-adventures/revenge_of_azzinax/map.yaml`, whose header carries the full rules.
-- Rooms keep the book's number. A room's openings are lettered clockwise from the west end of the north wall: 5a, 5b, … Every opening says which opening it meets (5d = 3b), so a link is checked from both sides, and an opening without a partner is an error `check` catches.
+**The map step's convention (Jelle, 2026-11-14).** The `map` skill reads the map into a `map.yaml` of named openings; the gold one is `dnd-adventures/revenge_of_azzinax/map.yaml`, whose header carries the full rules.
+- Rooms keep the book's number. A room's openings are lettered clockwise from the west end of the north wall: 5a, 5b, … Every opening says which opening it meets (5d = 3b), so a link is checked from both sides, and an opening without a partner is an error `check map` catches.
 - Corridors are locations of their own, cut at every junction and numbered C1, C2, … in reading order (north first, then west); their openings are lettered the same way. The map's small letters (a, c, e, …) are features that lie in a corridor, not its name.
 - **Every corridor stays a location, also an empty one.** Jelle's reasons: folding empty corridors away needs a check that a corridor is truly empty, and that check can fail; if only corridors with something in them exist, every corridor gives away that something is there; and distance is a game mechanic, e.g. what can be heard from room 9 depends on whether room 2 is next door or 18 m of corridor away. Supersedes the M7 draft of the gold Azzinax, which folded plain corridors into exits.
 - An exit's id is its opening's name, and its direction is the wall it is in (two on one wall: the one near a corner takes that corner's diagonal). A corridor's directions point towards each end and are unique within the corridor; those are chosen by hand, so `check` only tests uniqueness.
 - A door is two exits, one per side; the engine opens both when one is forced, unlocked or opened by a mechanism (`Adventure.other_side`, found 2026-11-14 while redoing Azzinax).
 - Open question: a long corridor can hold features far apart (Azzinax C7: the crater near room 3, the spike pit 100 m on). The engine triggers a corridor's hazard on entering it, from either end. Cut long corridors at features too, or give hazards a position, when a play test shows it matters.
 
-**Done when:** Azzinax goes from PDF and map to an adventure that passes `verify`, with the manual steps done by Jelle, and `eval` shows how close it comes to the gold; the repo's own book passes its evals in `pytest`.
+**Done when:** a trial conversion of Azzinax by the agent in the box (questions logged in `questions.md`, not answered) passes `verify` and has an `eval` report against the gold; the own test book's code tests pass in `pytest`; and Jelle has started the agent on his own machine and converted one book with it, ending on a passing `verify`.
+
+**After M8: domains the engine cannot hold yet (Jelle, 2026-11-14).** Each needs the engine first (a schema field, the narrator or rules using it, a test), then its converter skill. Suggested order:
+1. **Story and style:** the arc, tone and setting, as a brief the narrator writes in. Changes how every game feels.
+2. **Creature goals:** what a monster or NPC wants, so it acts convincingly (talk, flee, bargain).
+3. **NPCs:** who they are, what they know and will tell.
+4. **Images:** pictures from the book or generated, shown at the right moment.
 
 ### M9 — Scaling to one player (The Goblin Cave)
 - An `adventure-ingest scale` stage: each encounter's difficulty for the party the book was written for, cut to one character's budget (fewer or weaker monsters), deterministically.
@@ -561,7 +578,7 @@ All three are in `~/transport/dndgame/` in the box. Like Skyhorn, converted adve
 | M1–M6 building | One agent. Tightly coupled, sequential by design, small codebase. |
 | End-of-milestone review | Optional: one reviewer agent that sees the code, not the builder's reasoning. Only when Jelle asks; `open-pr` already runs a security review. |
 | Bulk data entry (SRD stat blocks, scenario adventures, lore files) once the schema is stable | A team may help if there are many items; each item is checked by the loader's validation. |
-| M8 ingestion (per chapter or per book) and running evals against several gold adventures | Team. Truly independent pieces, each checked by evals. Decide the shape when M8 starts. |
+| M8 conversion of a book | One agent, run as Jelle's session so it can ask him; sub-agents only for self-contained reading (a map, a page of stat blocks), returning a draft and questions. |
 
 A team costs several times the tokens of one agent and each handoff loses detail. When in doubt, one agent.
 
@@ -572,8 +589,8 @@ Prices per million tokens, input / output (2026-11): Fable 5.2 $8 / $40, Opus 5.
 | Model | Use for | Not for |
 |---|---|---|
 | **Opus 5.5** (default) | All building and design in M1–M9: code, tests, prompts, debugging, planning the next milestone. | — |
-| **Fable 5.2** | Hard, high-stakes thinking where a wrong call is expensive: designing the M8 ingestion pipeline and its evals; a bug or design problem Opus has failed at twice. Switch for that task, then switch back. | Routine milestone work: twice the price of Opus for no visible gain. |
-| **Sonnet 5.5** | Mechanical, well-specified work inside a team: transcribing SRD stat blocks into YAML, drafting scenario adventures and lore files against a fixed schema, M8 per-chapter workers. | Architecture, the core models, anything that sets a pattern others follow. |
+| **Fable 5.2** | Hard, high-stakes thinking where a wrong call is expensive: designing the M8 converter and its evals; running the converter agent on a book; a bug or design problem Opus has failed at twice. Switch for that task, then switch back. | Routine milestone work: twice the price of Opus for no visible gain. |
+| **Sonnet 5.5** | Mechanical, well-specified work inside a team: transcribing SRD stat blocks into YAML, drafting scenario adventures and lore files against a fixed schema, M8 sub-agents that read one map or one page of stat blocks. | Architecture, the core models, anything that sets a pattern others follow. |
 | **Haiku 5.5** | The game's runtime model (interpreter and narrator, see section 2). | Building the game. |
 
 Rule of thumb: the model that *decides* is Opus (Fable when stuck); the model that *fills in* against a validator can be Sonnet.
