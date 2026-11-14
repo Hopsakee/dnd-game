@@ -158,3 +158,29 @@ def test_the_narrator_hears_next_door_only_on_turns_about_perceiving(tmp_path):
     llm.narrate(TurnOutcome(actor_id="hero", intent=Intent(action="take"), events=[]), scene)
     look, take = (call["messages"][0]["content"] for call in messages.calls)
     assert "woodsmoke" in look and "woodsmoke" not in take
+
+
+def test_only_the_narration_reaches_the_player_not_the_models_planning(tmp_path):
+    # Azzinax play test, 2026-11-14 (flag 28): the narrator wrote its reasoning
+    # ("Only the move happened, so I narrate just that.") above the story.
+    reply = ("The player walks east. Only the move happened, so I narrate just that.\n\n"
+             "<narration>\nYou step out into the North Corridor.\n</narration>")
+    llm, messages, _ = _llm(tmp_path, [reply, "You step out into the corridor."])
+    outcome = TurnOutcome(actor_id="hero", intent=Intent(action="look"), events=[])
+    assert llm.narrate(outcome, SCENE) == "You step out into the North Corridor."
+    assert "<narration>" in messages.calls[0]["system"]
+    # A reply without the tags is taken whole, rather than lost.
+    assert llm.narrate(outcome, SCENE) == "You step out into the corridor."
+
+
+def test_the_narrator_is_not_shown_initiative_rolls(tmp_path):
+    # Flag 23: "Don't narrate that initiative is rolled. Just tell that I am quicker."
+    from solo_dm.core.state.events import CombatStarted, InitiativeRoll
+    llm, messages, _ = _llm(tmp_path, ["You are quicker."])
+    started = CombatStarted(initiative=[InitiativeRoll(combatant_id="hero", d20=15, bonus=1,
+                                                       total=16)],
+                            turn_order=["hero"])
+    llm.narrate(TurnOutcome(actor_id="hero", intent=Intent(action="move"), events=[started]),
+                SCENE)
+    sent = messages.calls[0]["messages"][0]["content"]
+    assert '"turn_order"' in sent and "initiative" not in sent

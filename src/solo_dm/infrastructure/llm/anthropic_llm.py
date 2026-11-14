@@ -26,6 +26,7 @@ PROMPTS = Path(__file__).parent / "prompts"
 # otherwise it repeats them every turn (play-test flag 8, 2026-11-13).
 SENSING_ACTIONS = {"move", "look", "search"}
 FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
+NARRATION = re.compile(r"<narration>(.*?)</narration>", re.DOTALL)
 
 
 def interpreter_prompt() -> str:
@@ -72,12 +73,13 @@ class AnthropicLLM(LLMPort):
         decided = outcome.model_dump(mode="json", serialize_as_any=True)
         for event in decided["events"]:
             event.pop("dc", None)  # the narrator must not be able to give a DC away
+            event.pop("initiative", None)  # the order is enough; no talk of rolls (flag 23)
         if outcome.intent.action not in SENSING_ACTIONS:
             scene = scene.model_copy(update={"nearby": []})
         content = f"<outcome>\n{json.dumps(decided, indent=1)}\n</outcome>\n\n"
         content += f"<scene>\n{scene.model_dump_json(indent=1)}\n</scene>"
         try:
-            return self._call("narrator", content).strip()
+            return _narration(self._call("narrator", content))
         except LLMUnavailable as unavailable:
             # The turn is already decided and applied; tell it plainly rather than lose it.
             plain = FakeLLM().narrate(outcome, scene)
@@ -102,6 +104,13 @@ class AnthropicLLM(LLMPort):
             campaign=self.campaign,
         )
         return "".join(b.text for b in response.content if b.type == "text")
+
+
+def _narration(text: str) -> str:
+    """The story inside <narration> tags, without any planning the model wrote
+    before it (Azzinax play test, flag 28); the whole reply if it has no tags."""
+    found = NARRATION.findall(text)
+    return (found[-1] if found else text).strip()
 
 
 def _parse_intent(text: str) -> dict[str, Any]:

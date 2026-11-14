@@ -440,6 +440,12 @@ The gold adventure: `revenge_of_azzinax/` in the private repo `dnd-adventures` (
 
 **Done when:** Jelle plays the gold Azzinax adventure to the end on his phone, and each new mechanic has a scenario with a scripted playthrough.
 
+**After the first phone play test (Jelle, 2026-11-14).** Fixed in M7: freeing Min-soo could not be won (the check fired only for DEX and the interpreter could not see it; now a challenge with a goal), the narrator's memory (last three turns; creature activity out of room descriptions), talking to the guardian, the Runt joining the fight (`group`), the hero's own purse, leaked planning (`<narration>` tags), no initiative in the narration. Deferred by Jelle until after M7:
+- Money as amounts (8 sp, spend 1) instead of purses as items.
+- Choosing a weapon (wield a carried one); weapon stats for found weapons, and the Cursed Warhammer's -1d4.
+- Doors on the map; the book's own player map, revealed as the party explores (needs room outlines in `map.yaml`).
+- Still open from M7: hidden creatures (the Runt in the shadows, the goblin behind the statue), checks with preconditions or costs (the platform after Azzinax, the fall, DC 5 after a failure), the mushrooms' condition.
+
 **Where adventures live (Jelle, 2026-11-14): game and adventure data in separate repos.**
 - `dnd-game` (this repo): the engine, web app, ingestion application and tests, plus only the data the tests check the engine with: `core_five_rooms`, the scenarios, their lore, and M8's own small test book.
 - `Hopsakee/dnd-adventures` (private, no code): converted books with their gold versions, lore that belongs to a book, and the ingest work folders with the manual model answers. Changed through PRs like this repo.

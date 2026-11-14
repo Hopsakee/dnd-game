@@ -35,7 +35,7 @@ from solo_dm.core.turn.combat import (
 )
 from solo_dm.core.turn.intent import Intent
 from solo_dm.core.turn.perception import notice_on_entering
-from solo_dm.core.turn.scene import build_scene
+from solo_dm.core.turn.scene import GUARDIAN_ID, build_scene
 
 
 class Resolution(BaseModel):
@@ -102,11 +102,11 @@ def _attack(state, adventure, actor_id, intent, dice) -> list[Event]:
     creature = state.creatures.get(intent.target_id or "")
     if creature is None or not creature.alive:
         raise Blocked("There is nothing there to attack.")
-    events: list[Event] = []
-    if creature.attitude != "hostile":
-        events.append(
-            AttitudeChanged(actor_id=actor_id, target_id=creature.creature_id, attitude="hostile")
-        )
+    events: list[Event] = [
+        AttitudeChanged(actor_id=actor_id, target_id=c.creature_id, attitude="hostile")
+        for c in [creature, *_group_mates(state, adventure, creature.creature_id)]
+        if c.attitude != "hostile"
+    ]
     if not state.in_combat:
         events += start_combat(apply_events(state, events), dice)
         state = apply_events(state, events)
@@ -115,6 +115,15 @@ def _attack(state, adventure, actor_id, intent, dice) -> list[Event]:
     attacker = state.party[actor_id]
     attack = character_attack(attacker, attacker.weapons[0].weapon_id)
     return events + resolve_attack(state, actor_id, creature.creature_id, attack, dice)
+
+
+def _group_mates(state, adventure, creature_id: str) -> list:
+    """Living creatures of the same group in the same place: they fight together."""
+    group = adventure.entity(creature_id).group
+    here = state.creatures[creature_id].location
+    return [c for c in state.creatures.values()
+            if group and c.creature_id != creature_id and c.alive and c.location == here
+            and adventure.entity(c.creature_id).group == group]
 
 
 def _take(state, adventure, actor_id, intent, dice) -> list[Event]:
@@ -196,13 +205,18 @@ def _search_room(state, adventure, actor_id, dice) -> list[Event]:
 def _ability_check(state, adventure, actor_id, intent, dice) -> list[Event]:
     """The fallback (plan 3.7): Python sets the DC from the task category and the
     target's attitude, rolls, and applies only consequences the adventure defines."""
+    here = adventure.location(state.party_location).checks
+    challenge = next((c for c in here if c.id and c.id == intent.target_id), None)
+    if challenge is not None:  # any attempt at the goal rolls the book's check
+        intent = intent.model_copy(update={"ability": challenge.ability,
+                                           "skill": challenge.skill, "target_id": None})
     if intent.ability is None:
         raise Blocked("Which ability do you use for that?")
     creature = state.creatures.get(intent.target_id or "")
     placed = adventure.entity(creature.creature_id) if creature else None
-    consequences = [c for c in (placed.checks if placed
-                                else adventure.location(state.party_location).checks)
-                    if c.ability == intent.ability and c.skill in (None, intent.skill)]
+    consequences = [challenge] if challenge else [
+        c for c in (placed.checks if placed else here)
+        if c.ability == intent.ability and c.skill in (None, intent.skill)]
     stated = next((c.dc for c in consequences if c.dc is not None), None)
     dc = stated or fallback_dc(intent.task_category, creature.attitude if creature else None)
     check = ability_check(state.party[actor_id], intent.ability, intent.skill, dc, dice)
@@ -253,7 +267,8 @@ def _look(state, adventure, actor_id, intent, dice) -> list[Event]:
 def _talk(state, adventure, actor_id, intent, dice) -> list[Event]:
     """Plain conversation needs no roll and changes nothing; the narrator voices
     the reply. Changing a creature's mind is an ability check instead."""
-    if intent.target_id is not None and intent.target_id not in state.creatures:
+    talkable = {*state.creatures, *([GUARDIAN_ID] if state.rescues_left > 0 else [])}
+    if intent.target_id is not None and intent.target_id not in talkable:
         raise Blocked("You can only talk to someone who is here.")
     return []
 

@@ -12,7 +12,9 @@ from solo_dm.core.state.models import GameState
 from solo_dm.core.turn.intent import Intent
 from solo_dm.core.turn.outcome import TurnOutcome
 from solo_dm.core.turn.resolve import resolve_intent
-from solo_dm.core.turn.scene import SceneContext, build_scene, scene_tags
+from solo_dm.core.turn.scene import SceneContext, SceneTurn, build_scene, scene_tags
+
+RECENT_TURNS = 3  # earlier turns the models see, for continuity
 
 COMPOUND_NOTE = "(Only the first action was done.)"
 NO_RULE_HINT = "so nothing happened. Try saying it another way."
@@ -80,6 +82,9 @@ class GameSession:
 
     def scene(self) -> SceneContext:
         scene = build_scene(self.state, self.adventure)
+        recent = [SceneTurn(player_input=t.player_input, narration=t.narration)
+                  for t in self.turns[-RECENT_TURNS:]]
+        scene = scene.model_copy(update={"recent": recent})
         if self._lore is None:
             return scene
         return scene.model_copy(

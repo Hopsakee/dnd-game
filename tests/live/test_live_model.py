@@ -289,3 +289,61 @@ def test_an_item_noticed_on_entering_is_not_taken_in_the_narration(llm):
     assert "ring" in text
     assert not any(w in text for w in ("pocket", "you take", "pick it up", "you pick up",
                                        "tuck", "slip it"))
+
+
+# Jelle's phone play test of Revenge of Azzinax, 2026-11-14 (flags 16-28).
+
+def _with(scene, **changes):
+    return scene.model_copy(update=changes)
+
+
+@pytest.mark.parametrize("text", [
+    "Ask Spiritus Magehunter if he can read the symbols on the stone",
+    "Ask my shining companion if he understands the writing",
+])
+def test_asking_the_guardian_something_is_talk_to_him(llm, text):  # flag 16
+    from solo_dm.core.turn.scene import SceneCompanion
+
+    scene = _with(_session(llm, moves=["north"]).scene(), companions=[
+        SceneCompanion(companion_id="guardian", name="Spiritus Magehunter")])
+    intent = Intent.model_validate(llm.interpret(text, scene))
+    assert (intent.action, intent.target_id) == ("talk", "guardian")
+
+
+@pytest.mark.parametrize("text", [
+    "free Min-soo", "cut the ropes with my sword", "climb up to the platform and untie him",
+])
+def test_any_attempt_at_a_challenge_targets_it(llm, text):  # flag 27
+    from solo_dm.core.turn.scene import SceneChallenge
+
+    scene = _with(_session(llm, moves=["north"]).scene(), challenges=[SceneChallenge(
+        challenge_id="free_min_soo", goal="get onto the hanging platform and free Min-soo")])
+    intent = Intent.model_validate(llm.interpret(text, scene))
+    assert (intent.action, intent.target_id) == ("ability_check", "free_min_soo")
+
+
+def test_the_narrator_keeps_to_what_it_said_before(llm):  # flag 25
+    # The old Azzinax room said "sits sharpening a knife"; the turn before, the
+    # narrator had him drop it and stand. Killed next turn, he "crumples over the
+    # knife he was sharpening".
+    from solo_dm.core.state.events import AttackRolled, CreatureDied, DamageDealt
+    from solo_dm.core.turn.scene import SceneTurn
+
+    session = _session(llm, moves=["north", "east"])
+    goblin = session.scene().creatures[0]
+    scene = _with(session.scene(),
+                  description=session.scene().description
+                  + f" The {goblin.name} sits by the fire sharpening a knife.",
+                  recent=[SceneTurn(player_input="attack the goblin", narration=(
+                      f"The {goblin.name} flings its knife aside, leaps to its feet and "
+                      "draws a notched scimitar."))])
+    events = [AttackRolled(actor_id=SOLO_ACTOR, target_id=goblin.creature_id,
+                           attack_name="Greatsword", d20=17, attack_bonus=5,
+                           target_armor_class=15, hit=True, critical=False),
+              DamageDealt(target_id=goblin.creature_id, rolls=[6, 5], modifier=3, amount=14,
+                          damage_type="slashing"),
+              CreatureDied(target_id=goblin.creature_id)]
+    outcome = TurnOutcome(actor_id=SOLO_ACTOR, events=events, intent=Intent(
+        action="attack", target_id=goblin.creature_id, approach="swing the greatsword"))
+    text = llm.narrate(outcome, scene).lower()
+    assert "sharpen" not in text and "sits" not in text

@@ -10,6 +10,8 @@ from solo_dm.core.ports import LoreSnippet
 from solo_dm.core.state.models import GameState
 from solo_dm.core.turn.combat import active_combatant
 
+GUARDIAN_ID = "guardian"  # the guardian's id in the scene, to talk to
+
 
 class SceneExit(BaseModel):
     exit_id: str
@@ -24,6 +26,7 @@ class SceneCreature(BaseModel):
     name: str
     attitude: str
     alive: bool
+    activity: str | None = None
 
 
 class SceneItem(BaseModel):
@@ -56,9 +59,30 @@ class SceneHazard(BaseModel):
     name: str
 
 
+class SceneChallenge(BaseModel):
+    """Something the book lets the party attempt here, until it succeeds."""
+
+    challenge_id: str
+    goal: str
+
+
 class SceneSense(BaseModel):
     direction: str  # the exit it comes through
     senses: str
+
+
+class SceneCompanion(BaseModel):
+    """Someone travelling with the party who is not a combatant (the guardian)."""
+
+    companion_id: str
+    name: str
+
+
+class SceneTurn(BaseModel):
+    """An earlier turn as the player saw it, for continuity."""
+
+    player_input: str
+    narration: str
 
 
 class SceneContext(BaseModel):
@@ -68,7 +92,9 @@ class SceneContext(BaseModel):
     exits: list[SceneExit]
     nearby: list[SceneSense] = []
     hazards: list[SceneHazard] = []
+    challenges: list[SceneChallenge] = []
     creatures: list[SceneCreature]
+    companions: list[SceneCompanion] = []
     items: list[SceneItem]
     party: list[ScenePartyMember]
     in_combat: bool
@@ -76,6 +102,9 @@ class SceneContext(BaseModel):
     # Background for the tagged location, creatures and items here, and for what
     # the interpreter asked to look up. Context only: it never changes outcomes.
     lore: list[LoreSnippet] = []
+    # The last few turns (Azzinax play test, 2026-11-14), so the story keeps to
+    # what it already said. Filled by the session; never changes outcomes.
+    recent: list[SceneTurn] = []
 
     def valid_ids(self) -> set[str]:
         held = {i.item_id for m in self.party for i in m.inventory}
@@ -83,6 +112,8 @@ class SceneContext(BaseModel):
             {e.exit_id for e in self.exits}
             | {c.creature_id for c in self.creatures}
             | {i.item_id for i in self.items}
+            | {c.challenge_id for c in self.challenges}
+            | {c.companion_id for c in self.companions}
             | held
         )
 
@@ -127,13 +158,22 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
             if h.hidden is not None and h.id not in state.hidden_unfound
             and h.id not in state.sprung_hazards
         ],
+        challenges=[
+            SceneChallenge(challenge_id=c.id, goal=c.goal)
+            for c in location.checks
+            if c.id and c.goal and c.on_success.set_flag not in state.quest_flags
+        ],
         creatures=[
             SceneCreature(
-                creature_id=c.creature_id, name=c.name, attitude=c.attitude, alive=c.alive
+                creature_id=c.creature_id, name=c.name, attitude=c.attitude, alive=c.alive,
+                activity=adventure.entity(c.creature_id).activity
+                if c.alive and c.attitude != "hostile" else None,
             )
             for c in state.creatures.values()
             if c.location == location.id
         ],
+        companions=[SceneCompanion(companion_id=GUARDIAN_ID, name=state.guardian)]
+        if state.guardian and state.rescues_left > 0 else [],
         items=[
             SceneItem.of(adventure, item_id)
             for item_id, where in state.items_on_floor.items()
