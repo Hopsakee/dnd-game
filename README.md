@@ -109,6 +109,7 @@ echo 'ANTHROPIC_API_KEY=...' > .env.solo_dm         # mounted read-only, not in 
 docker compose up -d --build
 docker compose logs -f                              # the tailnet address appears here
 docker compose exec solo-dm solo-dm play            # terminal play, same campaigns
+scripts/export-campaigns.sh                         # copy the campaigns (and flags) to the transport folder
 ```
 
 Campaigns and the cost log live in the volumes `campaigns` and `logs`, not in
