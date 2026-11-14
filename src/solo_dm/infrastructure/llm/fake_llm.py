@@ -29,6 +29,7 @@ CHECKS = [
     (["intimidate", "threaten"], "CHA", "intimidation"),
     (["climb", "jump", "swim"], "STR", "athletics"),
     (["balance", "leap", "swing", "tumble"], "DEX", "acrobatics"),
+    (["free", "rescue", "untie"], "DEX", None),
 ]
 
 
@@ -91,6 +92,11 @@ def _target(action: str, words: set[str], scene: SceneContext) -> str | None:
     elif action == "ability_check":
         found = [c.creature_id for c in scene.creatures
                  if c.alive and _matches(words, c.creature_id, c.name)]
+        if not found:  # not aimed at a creature: an attempt at the challenge here
+            found = [c.challenge_id for c in scene.challenges]
+    elif action == "talk":
+        found = [c.creature_id for c in scene.creatures if _matches(words, c.creature_id, c.name)]
+        found += [c.companion_id for c in scene.companions if _matches(words, c.name)]
     elif action == "use_item":
         found = [i.item_id for m in scene.party for i in m.inventory
                  if _matches(words, i.item_id, i.name)]

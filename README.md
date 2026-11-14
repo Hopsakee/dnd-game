@@ -139,6 +139,17 @@ M7: what Revenge of Azzinax needs. Adventures can now have:
 - `creatures/<id>.yaml` next to an adventure: its own stat blocks, for monsters
   outside the SRD.
 
+After Jelle's phone play test of Azzinax:
+
+- `id` and `goal` on a check make it a challenge: the models see the goal, and
+  any attempt at it (climbing, cutting the ropes) rolls that check.
+- `activity` on an entity: what it is doing while not fighting, instead of in
+  the room description; `group`: attack one, and the whole group fights.
+- `carried_by: party` on an item: the hero starts with it (his own purse).
+- The guardian travels along and can be talked to (`talk` to `guardian`).
+- Both models see the last three turns, so the story keeps to what it said; the
+  narrator answers inside `<narration>` tags, so no planning reaches the player.
+
 The Fighter now makes saving throws (proficient in STR and CON). Each mechanic
 has a scenario in `adventures/scenarios/`. Books live in the private repo
 `dnd-adventures`, cloned next to this one: `settings.yaml` reads

@@ -32,6 +32,10 @@ class CheckConsequence(AdventureModel):
     # from the interpreter's task category, as for any fallback (plan 3.7).
     dc: int | None = Field(default=None, ge=1)
     on_success: SetFlag
+    # A challenge (Azzinax play test, 2026-11-14): with an id and a goal, the
+    # interpreter sees the goal, and any attempt at it rolls this check.
+    id: str | None = None
+    goal: str | None = None
 
 
 class ItemUse(AdventureModel):
@@ -90,6 +94,11 @@ class EntityPlacement(AdventureModel):
     attitude: Attitude
     tags: tuple[str, ...] = ()
     checks: tuple[CheckConsequence, ...] = ()
+    # What it is doing when the party arrives ("sits sharpening a knife"); shown
+    # until it turns hostile or dies, so the room description need not say it.
+    activity: str | None = None
+    # Creatures of one group fight together: attack one, and all turn hostile.
+    group: str | None = None
 
 
 class ItemEffect(AdventureModel):
@@ -102,6 +111,9 @@ class OnTake(SetFlag):
     pass
 
 
+PARTY = "party"  # carried_by this: the first party member starts with the item
+
+
 class ItemPlacement(AdventureModel):
     """An item lies in a location or is carried by an entity (dropped on its body
     once the body is searched). Exactly one of location and carried_by is set."""
@@ -112,6 +124,7 @@ class ItemPlacement(AdventureModel):
     # other properties (play-test flag 12).
     description: str | None = None
     location: str | None = None
+    # An entity id, or "party": the hero starts with it (his own coins, M7).
     carried_by: str | None = None
     hidden: Hidden | None = None
     on_take: OnTake | None = None
@@ -171,6 +184,13 @@ class Adventure(AdventureModel):
     def exit(self, exit_id: str) -> Exit:
         return next(e for loc in self.locations for e in loc.exits if e.id == exit_id)
 
+    def other_side(self, exit_id: str) -> str | None:
+        """The exit back through the same door: the one way from the destination
+        to here, or None when there are several (two doors between two rooms)."""
+        origin = next(loc.id for loc in self.locations for e in loc.exits if e.id == exit_id)
+        back = [e.id for e in self.location(self.exit(exit_id).to).exits if e.to == origin]
+        return back[0] if len(back) == 1 else None
+
     def item(self, item_id: str) -> ItemPlacement:
         return next(i for i in self.items if i.id == item_id)
 
@@ -216,7 +236,7 @@ def _reference_problems(adventure: Adventure) -> list[str]:
             problems.append(f"'{item.id}' needs a location or carried_by")
         elif item.location is not None and item.carried_by is not None:
             problems.append(f"'{item.id}' has both a location and carried_by")
-        elif item.carried_by is not None and item.carried_by not in entities:
+        elif item.carried_by not in (None, PARTY, *entities):
             problems.append(f"'{item.id}' is carried by unknown entity '{item.carried_by}'")
         if item.carried_by is not None and item.hidden is not None:
             problems.append(f"'{item.id}' is carried, so it cannot be hidden")

@@ -440,6 +440,12 @@ The gold adventure: `revenge_of_azzinax/` in the private repo `dnd-adventures` (
 
 **Done when:** Jelle plays the gold Azzinax adventure to the end on his phone, and each new mechanic has a scenario with a scripted playthrough.
 
+**After the first phone play test (Jelle, 2026-11-14).** Fixed in M7: freeing Min-soo could not be won (the check fired only for DEX and the interpreter could not see it; now a challenge with a goal), the narrator's memory (last three turns; creature activity out of room descriptions), talking to the guardian, the Runt joining the fight (`group`), the hero's own purse, leaked planning (`<narration>` tags), no initiative in the narration. Deferred by Jelle until after M7:
+- Money as amounts (8 sp, spend 1) instead of purses as items.
+- Choosing a weapon (wield a carried one); weapon stats for found weapons, and the Cursed Warhammer's -1d4.
+- Doors on the map; the book's own player map, revealed as the party explores (needs room outlines in `map.yaml`).
+- Still open from M7: hidden creatures (the Runt in the shadows, the goblin behind the statue), checks with preconditions or costs (the platform after Azzinax, the fall, DC 5 after a failure), the mushrooms' condition.
+
 **Where adventures live (Jelle, 2026-11-14): game and adventure data in separate repos.**
 - `dnd-game` (this repo): the engine, web app, ingestion application and tests, plus only the data the tests check the engine with: `core_five_rooms`, the scenarios, their lore, and M8's own small test book.
 - `Hopsakee/dnd-adventures` (private, no code): converted books with their gold versions, lore that belongs to a book, and the ingest work folders with the manual model answers. Changed through PRs like this repo.
@@ -459,6 +465,14 @@ Decided by Jelle 2026-11-14: converting a book is its own application, not part 
 - **Evals**, in `evals/` and run with `uv run adventure-ingest eval <book>`: the output of a stage against the gold adventure, field by field (locations, links, monsters and where they are, items, locks, checks, hazards, the goal), as precision and recall per field. A model judge only for fuzzy fields, such as whether a description kept its key details. Every in-game error traced back to ingestion becomes a new eval case.
 - **Copyright and evals:** the gold adventures of bought or personal-use books live only in the private `dnd-adventures`, so their evals run only where that repo is. For evals that run anywhere (and in `pytest`), the repo gets one small book of our own: an original adventure written as a PDF with a map image, plus its gold.
 - SRD 5.2 versus 2014 stat-block layouts are handled in the stat-block step.
+
+**The map step's convention (Jelle, 2026-11-14).** The links step reads the map into a `map.yaml` of named openings; the gold one is `dnd-adventures/revenge_of_azzinax/map.yaml`, whose header carries the full rules.
+- Rooms keep the book's number. A room's openings are lettered clockwise from the west end of the north wall: 5a, 5b, … Every opening says which opening it meets (5d = 3b), so a link is checked from both sides, and an opening without a partner is an error `check` catches.
+- Corridors are locations of their own, cut at every junction and numbered C1, C2, … in reading order (north first, then west); their openings are lettered the same way. The map's small letters (a, c, e, …) are features that lie in a corridor, not its name.
+- **Every corridor stays a location, also an empty one.** Jelle's reasons: folding empty corridors away needs a check that a corridor is truly empty, and that check can fail; if only corridors with something in them exist, every corridor gives away that something is there; and distance is a game mechanic, e.g. what can be heard from room 9 depends on whether room 2 is next door or 18 m of corridor away. Supersedes the M7 draft of the gold Azzinax, which folded plain corridors into exits.
+- An exit's id is its opening's name, and its direction is the wall it is in (two on one wall: the one near a corner takes that corner's diagonal). A corridor's directions point towards each end and are unique within the corridor; those are chosen by hand, so `check` only tests uniqueness.
+- A door is two exits, one per side; the engine opens both when one is forced, unlocked or opened by a mechanism (`Adventure.other_side`, found 2026-11-14 while redoing Azzinax).
+- Open question: a long corridor can hold features far apart (Azzinax C7: the crater near room 3, the spike pit 100 m on). The engine triggers a corridor's hazard on entering it, from either end. Cut long corridors at features too, or give hazards a position, when a play test shows it matters.
 
 **Done when:** Azzinax goes from PDF and map to an adventure that passes `verify`, with the manual steps done by Jelle, and `eval` shows how close it comes to the gold; the repo's own book passes its evals in `pytest`.
 

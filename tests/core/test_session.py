@@ -80,3 +80,15 @@ def test_the_clarifying_question_offers_the_creatures_and_items_here():
     session.play_turn("hero", "go east")
     question = session.play_turn("hero", "flibber").narration
     assert "attack Goblin Warrior" in question and "take Iron Key" in question
+
+
+def test_the_narrator_hears_the_last_three_turns():
+    # Azzinax play test, 2026-11-14 (flag 25): Azzinax dropped his knife, and the
+    # next turn he was sharpening it again; the narrator got no earlier turns.
+    llm = ScriptedLLM([{"action": "look"}] * 5)
+    session = _session(llm)
+    for line in ["one", "two", "three", "four", "five"]:
+        session.play_turn("hero", line)
+    _, scene = llm.narrated[-1]
+    assert [(t.player_input, t.narration) for t in scene.recent] == [
+        ("two", "narration 2"), ("three", "narration 3"), ("four", "narration 4")]

@@ -121,6 +121,8 @@ class DoorUnlocked(Event):
     type: Literal["door_unlocked"] = "door_unlocked"
     exit_id: str
     method: Literal["key", "picked", "forced", "mechanism"]
+    # The same door seen from the other room: opened with it.
+    other_side: str | None = None
 
 
 class ItemTaken(Event):
