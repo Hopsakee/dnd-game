@@ -163,3 +163,22 @@ pre { white-space: pre-wrap; font-size: 0.85rem; }
 .map .room text { fill: var(--fg); font: 14px system-ui, sans-serif; }
 .map .room.current rect { fill: var(--accent); stroke: var(--accent); }
 .map .room.current text { fill: var(--accent-fg); font-weight: bold; }
+
+.combat-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: system-ui, sans-serif;
+  font-weight: bold;
+  padding: 0 0 0.5rem;
+}
+.combat-bar .hp.low { color: #b3261e; }
+.combat-bar .turn { color: var(--accent); }
+
+#log .pending .waiting {
+  color: var(--muted);
+  font-style: italic;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.35; } }
+.controls button:disabled, .controls input:disabled { opacity: 0.5; }

@@ -90,6 +90,7 @@ def create_web_app(services: WebServices) -> FastHTML:
         hdrs=(Meta(name="viewport", content="width=device-width, initial-scale=1"),
               Script(src="/static/vendor/htmx.min.js"),
               Script(src="/static/vendor/fasthtml.js"),
+              Script(src="/static/app.js"),
               Link(rel="stylesheet", href="/static/app.css")),
     )
     app.mount("/static", StaticFiles(directory=services.static), name="static")
@@ -308,17 +309,33 @@ def play_controls(campaign_id: int, session: GameSession, actor_id: str, oob: bo
     if session.state.outcome != "playing":
         return Div(P(outcome_text(session.state.outcome), cls="outcome"),
                    A("Back to campaigns", href="/campaigns"), id="controls", **extra)
+    scene = session.scene()
     target = {"hx_post": f"/play/{campaign_id}", "hx_target": "#log", "hx_swap": "beforeend"}
     buttons = [Button(a, type="button", hx_vals=_vals(a), cls="quick", **target)
-               for a in quick_actions(session.scene())]
+               for a in quick_actions(scene)]
     form = Form(
         Input(name="line", placeholder="What do you do?", autocomplete="off",
               aria_label="What do you do?"),
         Button("Do it"),
         method="post", action=f"/play/{campaign_id}", cls="row",
-        **target, **{"hx-on::after-request": "this.reset()"},
+        **target, **{"hx-on::after-request": "if (event.detail.successful) this.reset()"},
     )
-    return Div(Div(*buttons, cls="quick-row"), form, id="controls", cls="controls", **extra)
+    return Div(*combat_bar(scene, actor_id), Div(*buttons, cls="quick-row"), form,
+               id="controls", cls="controls",
+               hx_disabled_elt="#controls button, #controls input", **extra)
+
+
+def combat_bar(scene: SceneContext, actor_id: str) -> list:
+    """In a fight, the party's hit points stay in sight above the input
+    (Jelle's phone play test, 2026-11-14)."""
+    if not scene.in_combat:
+        return []
+    parts = [Span(f"{m.name} {m.hp}/{m.max_hp} HP",
+                  cls="hp low" if m.hp * 3 <= m.max_hp else "hp")
+             for m in scene.party]
+    if scene.active_combatant == actor_id:
+        parts.append(Span("Your turn", cls="turn"))
+    return [Div(*parts, cls="combat-bar")]
 
 
 def _vals(line: str) -> str:
