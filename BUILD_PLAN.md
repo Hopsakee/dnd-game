@@ -427,6 +427,37 @@ Out of scope: traps, secret-door mechanisms, hidden creatures and Stealth, time 
 - Every in-game error traced back to ingestion becomes a new eval case.
 - SRD 5.2 vs 2014 stat-block layout differences handled here.
 
+**Test books in order (Jelle, 2026-11-14).** Skyhorn needs too much engine to come first, so M7 starts small and changes one thing at a time:
+
+1. **Revenge of Azzinax** (Alexander Thomas): ingestion first. Written for one level-1 player, so no scaling at all.
+2. **The Goblin Cave** (Bruno71): scaling next. Written for a party of 5 at level 1-3, with a monster set per level.
+3. **Dead Ends: Grungus the Ghoulish** (lowerlevels.ca): later. For 3-5 level-1 players; a spellcasting boss, saving throws, a swamp.
+4. Skyhorn Lighthouse (below): last.
+
+All three are in `~/transport/dndgame/` in the box. Like Skyhorn, converted adventures stay out of git. The Goblin Cave says "Permission granted to print or photocopy this document for personal use only". The other two's licences are not checked.
+
+**Scaling to one player: shrink the fights when converting (Jelle, 2026-11-14).** Of the three options considered, this one: the conversion computes each encounter's difficulty for the party the book was written for and cuts it to one character's budget (fewer or weaker monsters). It is deterministic, so evals can check it, and the adventure text stays as written. Not chosen for now: Python-run companions (keeps the encounters, more engine work, a step towards multiplayer) and a stronger hero (bends 5e). Scaling is more than combat: the conversion must also check that one Fighter can solve every obstacle (skills a party would share, such as Arcana or Thieves' Tools), alone or through the ability-check fallback. Open: whether SRD 5.2 contains the per-character XP budget table (the 2024 DMG has one); check before relying on it.
+
+**Revenge of Azzinax: what extraction gave (2026-11-14, `pymupdf4llm`, 8 pages, 1,367 words).**
+- Text: a hook (a village, an old woman, a kidnapped grandson), a forest encounter (2 baboons), and a dungeon guide table: 9 rooms and 8 corridor features (a, c, e, i, m, n, r, s). The goal is clear: defeat Azzinax in room 4 and free Min-soo.
+- **The connections are only on the map.** Room entries say which wall and what kind of door, but mostly not where they lead (only "leads to room #5" and the like for a few). The graph comes from the map image (`Lair of Azzinax 01`, 1751×2251 PNG, grid). The gold standard is drawn by hand; automatic extraction from map images is a separate question.
+- **The stat blocks are images.** Page 6 (Azzinax, Goblin Runt, Modified Goblin, Spiritus Magehunter) extracts as an empty heading. They need a vision model or hand entry. An eval case: the extracted text must not silently miss a page of stat blocks.
+- Monsters: baboons and crawling claws (Monster Manual; whether they are in SRD 5.2 is not checked), plus four homebrew stat blocks.
+
+**Engine gaps Azzinax exposes** (engine as of M6). Planning M7 means deciding which the engine gets and which the conversion simplifies away:
+- Traps and hazards with saving throws (falling rocks DEX 15, poison mushrooms CON 15, a spike pit). The engine has no saving throws and no traps.
+- Conditions: disadvantage on the next roll.
+- Ranged attacks (shortbows, darts). Combat is melee only.
+- Stuck doors to force (a STR check); the schema has locks with a key or a pick DC, not "stuck".
+- A puzzle: a coin tossed into the fountain opens all doors of room 3. There is no currency, and "use this item here" does not unlock exits.
+- An ally, Spiritus Magehunter: gives advice, restores the hero to full HP once at 0 HP, and fights in the final battle. Also an answer to the harsh solo fights seen in the M6 play test (one goblin fight in seven is lost, 2,000 runs).
+- Consumables and rests: a healing potion (2d4+2); a short or long rest after the baboons.
+- Magic items with an effect: Ring of Safety (+1 saving throws), Cursed Warhammer (-1d4 damage).
+- Talking before a fight: Azzinax talks first; the Goblin Runt ambushes if the hero turns hostile.
+- A check with a precondition and a cost: after Azzinax is dead, Acrobatics DC 10 to reach the platform, or fall 10 feet.
+- Money as a reward (sp, gp, gems).
+- Places outside the dungeon: the village and the forest path.
+
 **First test book (Jelle, 2026-11-13): The Secrets of Skyhorn Lighthouse** (Arcane Library; 5th level, party of 4-5).
 - Where: `~/transport/dndgame/1060290-The_Secrets_of_Skyhorn_Lighhouse_V8-1.zip` in the box (PDF, print-friendly PDF, maps, combat cards, a Fantasy Grounds `.mod`).
 - Copyright: a purchased product. The converted adventure stays out of git (e.g. a gitignored `adventures/private/`); the repo holds code, evals and findings only.
