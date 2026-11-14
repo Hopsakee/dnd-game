@@ -24,7 +24,7 @@ locations:
   - id: lair
     name: Lair
     description: A lair.
-    checks: [{ability: CHA, on_success: {set_flag: done}}]
+    checks: [{id: charm, goal: charm the runt, ability: CHA, on_success: {set_flag: done}}]
 entities:
   - {id: runt, srd_ref: goblin_runt, location: lair, attitude: indifferent}
 """

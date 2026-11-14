@@ -1,6 +1,7 @@
-# Scenario: the ability-check fallback (plan 3.7). No rule covers talking a
-# goblin out of the way; the interpreter proposes a Charisma check, Python sets
-# the DC (medium 15, indifferent +0) and the adventure says what success does.
+# Scenario: challenges and the ability-check fallback (plan 3.7). Talking the
+# goblin out of the way is a challenge: any attempt rolls its Charisma
+# (Persuasion) check, with the DC Python sets (medium 15, indifferent +0); the
+# adventure says what success does.
 id: ability_check
 title: The Gatekeeper
 start_location: gate
@@ -13,7 +14,8 @@ locations:
       bored. The cliff is sheer but cracked; the road runs back south.
     exits: [{id: gate_to_road, to: road, direction: south}]
     checks:
-      - {ability: STR, skill: athletics, on_success: {set_flag: cliff_climbed}}
+      - {id: climb_cliff, goal: climb the cracked cliff, ability: STR, skill: athletics,
+         on_success: {set_flag: cliff_climbed}}
   - id: road
     name: Road
     description: A muddy road leading away from the cliffs.
@@ -24,4 +26,5 @@ entities:
     location: gate
     attitude: indifferent
     checks:
-      - {ability: CHA, skill: persuasion, on_success: {set_flag: passage_granted}}
+      - {id: get_past_gatekeeper, goal: get the gatekeeper to let you through the gate,
+         ability: CHA, skill: persuasion, on_success: {set_flag: passage_granted}}

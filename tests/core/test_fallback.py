@@ -1,6 +1,6 @@
 """M3: the ability-check fallback (plan 3.7). The interpreter picks ability and
 task category; Python sets the DC, rolls, and applies only consequences the
-adventure data defines.
+adventure data defines: since 2026-11-14 only through a challenge it aims at.
 
 The test Fighter has STR 16 (+3, athletics proficient: +5) and CHA 10 (+0)."""
 
@@ -18,12 +18,13 @@ from .builders import fighter
 ADVENTURE = tiny_adventure(
     entities=[{"id": "goblin", "srd_ref": "goblin_warrior", "location": "hall",
                "attitude": "indifferent",
-               "checks": [{"ability": "CHA", "on_success": {"set_flag": "goblin_allied"}}]}],
+               "checks": [{"id": "befriend", "goal": "win the goblin over", "ability": "CHA",
+                           "on_success": {"set_flag": "goblin_allied"}}]}],
     locations=[
         {"id": "hall", "name": "Hall", "description": "A hall.",
          "exits": [{"id": "hall_to_shrine", "to": "shrine", "direction": "north"}],
-         "checks": [{"ability": "STR", "skill": "athletics",
-                     "on_success": {"set_flag": "got_amulet"}}]},
+         "checks": [{"id": "climb", "goal": "climb the wall", "ability": "STR",
+                     "skill": "athletics", "on_success": {"set_flag": "got_amulet"}}]},
         {"id": "shrine", "name": "Shrine", "description": "A shrine.",
          "exits": [{"id": "shrine_to_hall", "to": "hall", "direction": "south"}]},
     ],
@@ -68,7 +69,7 @@ def test_a_missing_task_category_counts_as_medium():
 
 
 def test_success_against_a_creature_sets_the_flag_the_adventure_defines():
-    intent = _check(ability="CHA", skill="persuasion", target_id="goblin", task_category="easy")
+    intent = _check(ability="CHA", skill="persuasion", target_id="befriend", task_category="easy")
     events = resolve_intent(_start(), ADVENTURE, "hero", intent, FixedDice([10])).events
     assert [e.type for e in events] == ["check_rolled", "quest_flag_set"]
     assert events[0].dc == 10  # easy, indifferent
@@ -76,22 +77,19 @@ def test_success_against_a_creature_sets_the_flag_the_adventure_defines():
 
 
 def test_failure_sets_nothing():
-    intent = _check(ability="CHA", target_id="goblin", task_category="easy")
+    intent = _check(ability="CHA", target_id="befriend", task_category="easy")
     events = resolve_intent(_start(), ADVENTURE, "hero", intent, FixedDice([3])).events
     assert [e.type for e in events] == ["check_rolled"]
 
 
-def test_a_consequence_needs_the_right_ability_and_skill():
-    wrong_ability = _check(ability="WIS", target_id="goblin", task_category="easy")
-    events = resolve_intent(_start(), ADVENTURE, "hero", wrong_ability, FixedDice([20])).events
-    assert [e.type for e in events] == ["check_rolled"]
-    wrong_skill = _check(ability="STR", task_category="easy")  # the room needs athletics
-    events = resolve_intent(_start(), ADVENTURE, "hero", wrong_skill, FixedDice([20])).events
+def test_a_check_aimed_at_the_creature_but_not_its_challenge_sets_nothing():
+    aimed = _check(ability="CHA", target_id="goblin", task_category="easy")
+    events = resolve_intent(_start(), ADVENTURE, "hero", aimed, FixedDice([20])).events
     assert [e.type for e in events] == ["check_rolled"]
 
 
 def test_a_check_that_sets_the_win_flag_wins():
-    intent = _check(ability="STR", skill="athletics", task_category="medium")
+    intent = _check(ability="STR", target_id="climb", task_category="medium")
     events = resolve_intent(_start(), ADVENTURE, "hero", intent, FixedDice([12])).events
     assert [e.type for e in events] == ["check_rolled", "quest_flag_set", "adventure_won"]
 
@@ -114,7 +112,8 @@ def test_adventure_check_flags_count_for_the_win_condition():
         win_condition={"flag": "goblin_allied"},
         entities=[{"id": "goblin", "srd_ref": "goblin_warrior", "location": "hall",
                    "attitude": "indifferent",
-                   "checks": [{"ability": "CHA", "on_success": {"set_flag": "goblin_allied"}}]}],
+                   "checks": [{"id": "befriend", "goal": "win the goblin over",
+                               "ability": "CHA", "on_success": {"set_flag": "goblin_allied"}}]}],
     )
     assert adventure.win_condition.flag == "goblin_allied"
 
@@ -124,14 +123,14 @@ def test_a_dc_the_adventure_gives_wins_over_the_task_category():
     from .adventure_fixture import ADVENTURE as BASE
 
     shrine = {**BASE["locations"][2], "checks": [
-        {"ability": "DEX", "skill": "acrobatics", "dc": 10,
-         "on_success": {"set_flag": "got_amulet"}}]}
+        {"id": "leap", "goal": "leap onto the altar", "ability": "DEX", "skill": "acrobatics",
+         "dc": 10, "on_success": {"set_flag": "got_amulet"}}]}
     adventure = tiny_adventure(entities=[], locks=[],
                                locations=[*BASE["locations"][:2], shrine])
     state = initial_state(adventure, [fighter()], BESTIARY)
     state = apply_events(state, resolve_intent(state, adventure, "hero", Intent(
         action="move", target_id="hall_to_shrine"), FixedDice([])).events)
     resolution = resolve_intent(state, adventure, "hero", _check(
-        ability="DEX", skill="acrobatics", task_category="hard"), FixedDice([8]))
+        ability="DEX", target_id="leap", task_category="hard"), FixedDice([8]))
     check = resolution.events[0]
     assert (check.dc, check.total, check.success) == (10, 10, True)  # 8 + DEX 2

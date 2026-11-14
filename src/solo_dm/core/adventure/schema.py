@@ -23,19 +23,18 @@ class SetFlag(AdventureModel):
 
 
 class CheckConsequence(AdventureModel):
-    """What an ability-check fallback (plan 3.7) does here when the check succeeds.
-    Matches a check with this ability (and skill, when given)."""
+    """A challenge: a goal the party can attempt here or with a creature, and the
+    check the book sets for it. The models see the goal, and any attempt at it
+    rolls this check (Azzinax play test, 2026-11-14)."""
 
+    id: str
+    goal: str  # what the attempt achieves, e.g. "get onto the platform and free Min-soo"
     ability: Ability
     skill: str | None = None
     # The DC the adventure states, if it states one (M7); otherwise Python sets it
     # from the interpreter's task category, as for any fallback (plan 3.7).
     dc: int | None = Field(default=None, ge=1)
     on_success: SetFlag
-    # A challenge (Azzinax play test, 2026-11-14): with an id and a goal, the
-    # interpreter sees the goal, and any attempt at it rolls this check.
-    id: str | None = None
-    goal: str | None = None
 
 
 class ItemUse(AdventureModel):
@@ -220,6 +219,8 @@ def _reference_problems(adventure: Adventure) -> list[str]:
         *[h.id for loc in adventure.locations for h in loc.hazards],
         *[e.id for e in adventure.entities],
         *[i.id for i in adventure.items],
+        *[c.id for loc in adventure.locations for c in loc.checks],
+        *[c.id for e in adventure.entities for c in e.checks],
     ]
     problems = [f"duplicate id '{i}'" for i, n in Counter(all_ids).items() if n > 1]
     if adventure.start_location not in locations:

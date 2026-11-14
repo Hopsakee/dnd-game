@@ -142,7 +142,7 @@ class SQLiteCampaignStore(CampaignStorePort):
             state = GameState.model_validate_json(snapshot["state"])
         return StoredCampaign(
             campaign_id=campaign_id,
-            adventure=Adventure.model_validate_json(campaign["adventure_copy"]),
+            adventure=Adventure.model_validate(_upgraded(json.loads(campaign["adventure_copy"]))),
             initial_state=initial,
             turns=[self._turn(row) for row in rows],
             state=state,
@@ -226,3 +226,18 @@ class SQLiteCampaignStore(CampaignStorePort):
             compound=bool(row["compound"]),
             flag_note=row["flag_note"],
         )
+
+
+def _upgraded(adventure: dict) -> dict:
+    """A frozen adventure copy in today's format. Copies made before every check
+    needed an id and a goal (2026-11-14) get both, so old campaigns resume, and
+    their checks become challenges any attempt can reach."""
+    places = [*adventure.get("locations", []), *adventure.get("entities", [])]
+    for place in places:
+        for n, check in enumerate(place.get("checks", []), 1):
+            skill = f" ({check['skill']})" if check.get("skill") else ""
+            check.setdefault("id", f"{place['id']}_check_{n}")
+            check.setdefault("goal", f"what the adventure lets you try here with "
+                                     f"{check['ability']}{skill}")
+    return adventure
+

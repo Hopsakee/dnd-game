@@ -92,8 +92,9 @@ def _target(action: str, words: set[str], scene: SceneContext) -> str | None:
     elif action == "ability_check":
         found = [c.creature_id for c in scene.creatures
                  if c.alive and _matches(words, c.creature_id, c.name)]
-        if not found:  # not aimed at a creature: an attempt at the challenge here
-            found = [c.challenge_id for c in scene.challenges]
+        # An attempt at a challenge: the aimed-at creature's, or the place's.
+        aimed = found[0] if found else None
+        found = [c.challenge_id for c in scene.challenges if c.creature_id == aimed] or found
     elif action == "talk":
         found = [c.creature_id for c in scene.creatures if _matches(words, c.creature_id, c.name)]
         found += [c.companion_id for c in scene.companions if _matches(words, c.name)]
