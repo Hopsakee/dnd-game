@@ -176,3 +176,20 @@ def test_starting_the_app_writes_no_session_key_file(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     web(tmp_path)
     assert not (tmp_path / ".sesskey").exists()
+
+
+def test_a_post_from_another_site_is_refused_and_plays_no_turn(tmp_path, store):
+    # CSRF: a page on another site, opened while on the tailnet, must not be able
+    # to play turns (and spend on the API key). Browsers mark such requests.
+    game, _ = open_game(store)
+    run(game, ["quit"])
+    client = web(tmp_path)
+    url = f"/play/{game.session.campaign_id}"
+    refused = client.post(url, data={"line": "go north"},
+                          headers={"Sec-Fetch-Site": "cross-site"})
+    assert refused.status_code == 403
+    assert client.post("/campaigns", data={"adventure": "core_five_rooms"},
+                       headers={"Sec-Fetch-Site": "same-site"}).status_code == 403
+    assert client.post(url, data={"line": "go north"},
+                       headers={**HTMX, "Sec-Fetch-Site": "same-origin"}).status_code == 200
+    assert [t.player_input for t in store.load(game.session.campaign_id).turns] == ["go north"]

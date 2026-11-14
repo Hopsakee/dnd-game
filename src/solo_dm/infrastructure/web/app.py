@@ -46,7 +46,7 @@ from fasthtml.common import (
     Ul,
 )
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 from starlette.staticfiles import StaticFiles
 
 from solo_dm.core.ports import CampaignSummary
@@ -86,6 +86,7 @@ def create_web_app(services: WebServices) -> FastHTML:
         # The app keeps nothing in the session, so a fresh key per start will do,
         # and FastHTML then writes no .sesskey file into the working directory.
         secret_key=secrets.token_hex(32),
+        before=refuse_other_sites,
         hdrs=(Meta(name="viewport", content="width=device-width, initial-scale=1"),
               Script(src="/static/vendor/htmx.min.js"),
               Script(src="/static/vendor/fasthtml.js"),
@@ -198,6 +199,18 @@ def create_web_app(services: WebServices) -> FastHTML:
         return page("Model cost", H1("Model cost"), Pre(services.cost_report()))
 
     return app
+
+
+def refuse_other_sites(req: Request):
+    """CSRF guard: a page on another site, opened while on the tailnet, could
+    otherwise post turns (and spend on the API key). Browsers say where a request
+    comes from in Sec-Fetch-Site; anything but this site is refused. A client
+    that sends no such header (curl, tests) is let through."""
+    if req.method in ("GET", "HEAD"):
+        return None
+    if req.headers.get("sec-fetch-site", "same-origin") in ("same-origin", "none"):
+        return None
+    return Response("Refused: this request came from another site.", status_code=403)
 
 
 def handle_line(session: GameSession, services: WebServices, line: str) -> list:
