@@ -10,6 +10,7 @@ from solo_dm.core.state.models import (
     AbilityScores,
     Attitude,
     Character,
+    Coins,
     CreatureStatBlock,
     CreatureState,
     Weapon,
@@ -29,6 +30,7 @@ class CharacterTemplate(BaseModel):
     saving_throw_proficiencies: list[Ability] = []
     weapons: list[str]
     inventory: list[str] = []
+    coins: Coins = Coins()
     not_implemented: list[str] = []
 
 
@@ -71,6 +73,7 @@ class YamlSrdCatalog:
             saving_throw_proficiencies=tuple(template.saving_throw_proficiencies),
             weapons=tuple(weapons[w] for w in template.weapons),
             inventory=tuple(template.inventory),
+            coins=template.coins,
         )
 
     def _weapons(self) -> dict[str, Weapon]:

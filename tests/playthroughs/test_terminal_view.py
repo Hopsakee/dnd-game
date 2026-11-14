@@ -83,7 +83,7 @@ def test_inventory_and_i_are_the_inv_command_and_show_what_is_worn_and_wielded()
         game, output = _game(FakeLLM())
         game.handle(command)
         assert output.getvalue().strip() == (
-            "Fighter: wears Chain Mail (AC 17), wields Greatsword; pack: empty"
+            "Fighter: wears Chain Mail (AC 17), wields Greatsword; pack: Coins (18 gp)"
         )
         assert game.session.turns == []
 
@@ -123,5 +123,5 @@ def test_the_inventory_calls_what_you_carry_your_pack():
     game, output = _game(FakeLLM())
     game.handle("i")
     assert output.getvalue().strip() == (
-        "Fighter: wears Chain Mail (AC 17), wields Greatsword; pack: empty"
+        "Fighter: wears Chain Mail (AC 17), wields Greatsword; pack: Coins (18 gp)"
     )

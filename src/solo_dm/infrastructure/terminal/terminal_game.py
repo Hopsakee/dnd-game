@@ -102,7 +102,10 @@ class TerminalGame:
         for m in self.session.scene().party:
             gear = [f"wears {m.armor} (AC {m.armor_class})" if m.armor else f"AC {m.armor_class}"]
             if m.weapons:
-                gear.append("wields " + ", ".join(m.weapons))
+                gear.append("wields " + ", ".join(w.name for w in m.weapons if w.wielded))
+                spare = [w.name for w in m.weapons if not w.wielded]
+                if spare:
+                    gear.append("carries " + ", ".join(spare))
             carried = ", ".join(i.name for i in m.inventory) or "empty"
             lines.append(f"{m.name}: {', '.join(gear)}; pack: {carried}")
         return "\n".join(lines)

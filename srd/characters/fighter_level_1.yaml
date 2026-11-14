@@ -11,6 +11,8 @@ skill_proficiencies: [athletics, intimidation, perception, survival]
 saving_throw_proficiencies: [STR, CON]
 weapons: [greatsword]
 inventory: []
+# Starting equipment option A: the Fighter's 4 GP plus the Soldier's 14 GP.
+coins: {gp: 18}
 not_implemented:
   - "Second Wind (needs rests)"
   - "Weapon Mastery (Graze)"

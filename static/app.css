@@ -163,6 +163,10 @@ pre { white-space: pre-wrap; font-size: 0.85rem; }
 .map .room text { fill: var(--fg); font: 14px system-ui, sans-serif; }
 .map .room.current rect { fill: var(--accent); stroke: var(--accent); }
 .map .room.current text { fill: var(--accent-fg); font-weight: bold; }
+.map .door { fill: var(--panel); stroke: var(--fg); stroke-width: 3; }
+.map .door.locked { fill: var(--fg); }
+.book-map .fog { fill: #1d2833; }
+.book-map .here { fill: var(--accent); fill-opacity: 0.35; }
 
 .combat-bar {
   display: flex;

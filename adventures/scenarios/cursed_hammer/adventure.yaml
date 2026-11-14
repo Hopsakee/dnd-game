@@ -1,0 +1,25 @@
+# Scenario (after M7): choosing a weapon. A found warhammer has weapon stats and
+# a curse (-1d4 damage, as in Revenge of Azzinax); the hero can wield it, and
+# switch back to the greatsword.
+id: cursed_hammer
+title: Cursed Hammer
+start_location: armoury
+win_condition: {flag: trophy_taken}
+locations:
+  - id: armoury
+    name: Old Armoury
+    description: Empty racks line the walls. A warhammer set with jewels lies on a bench. A clearing opens to the east.
+    exits: [{id: armoury_to_clearing, to: clearing, direction: east}]
+  - id: clearing
+    name: Clearing
+    description: A trampled clearing around a crude totem.
+    exits: [{id: clearing_to_armoury, to: armoury, direction: west}]
+entities:
+  - {id: goblin, srd_ref: goblin_warrior, location: clearing, attitude: hostile}
+items:
+  - id: cursed_warhammer
+    name: Bejewelled Warhammer
+    description: A warhammer set with jewels that glows faintly red.
+    location: armoury
+    weapon: {ability: STR, damage_dice: 1d8, damage_type: bludgeoning, damage_penalty: 1d4}
+  - {id: totem, name: Goblin Totem, location: clearing, on_take: {set_flag: trophy_taken}}

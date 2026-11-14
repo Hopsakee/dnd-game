@@ -223,3 +223,51 @@ def test_carried_items_get_a_use_button(tmp_path, store):
     fragment = web(tmp_path).post(f"/play/{game.session.campaign_id}",
                                   data={"line": "look"}, headers=HTMX).text
     assert "use Potion of Healing" in fragment
+
+
+def test_a_found_weapon_gets_a_wield_button_and_shows_on_the_sheets(tmp_path, store):
+    # Azzinax flag 21: "I can't choose which weapon to use."
+    game, _ = open_game(store, adventure_id="scenarios/cursed_hammer")
+    run(game, ["take warhammer", "quit"])
+    client = web(tmp_path)
+    campaign = game.session.campaign_id
+    fragment = client.post(f"/play/{campaign}", data={"line": "look"}, headers=HTMX).text
+    assert "wield Bejewelled Warhammer" in fragment and "wield Greatsword" not in fragment
+    client.post(f"/play/{campaign}", data={"line": "wield the warhammer"}, headers=HTMX)
+    inventory = client.get(f"/inventory/{campaign}").text
+    assert "Wields: Bejewelled Warhammer (1d8 bludgeoning, -1d4 damage)" in inventory
+    assert "Carries: Greatsword (2d6 slashing)" in inventory
+    sheet = client.get(f"/character/{campaign}").text
+    assert "Bejewelled Warhammer: 1d8 bludgeoning, -1d4 damage (STR), in hand" in sheet
+
+
+def test_the_inventory_shows_the_coins(tmp_path, store):
+    game, _ = open_game(store, adventure_id="scenarios/coin_purse")
+    run(game, ["take purse", "quit"])
+    inventory = web(tmp_path).get(f"/inventory/{game.session.campaign_id}").text
+    assert "Coins (18 gp, 8 sp)" in inventory
+
+
+def test_the_map_shows_the_books_map_where_the_party_has_been(tmp_path, store):
+    # Azzinax flag 22: "It would be better to have parts of the actual map."
+    game, _ = open_game(store, adventure_id="scenarios/player_map")
+    run(game, ["quit"])
+    client = web(tmp_path)
+    campaign = game.session.campaign_id
+    page = client.get(f"/map/{campaign}").text
+    assert f'href="/map-image/{campaign}"' in page and "<clipPath" in page
+    assert page.count('class="seen"') == 2  # the hall and its door, not the passage yet
+    assert 'viewBox="0 0 120 120"' in page
+    assert "Schematic map" in page  # the node map stays, folded away
+    image = client.get(f"/map-image/{campaign}")
+    assert image.status_code == 200 and image.headers["content-type"] == "image/png"
+    assert image.content.startswith(b"\x89PNG")
+
+
+def test_an_adventure_without_a_player_map_keeps_the_node_map(tmp_path, store):
+    game, _ = open_game(store)
+    run(game, ["quit"])
+    client = web(tmp_path)
+    page = client.get(f"/map/{game.session.campaign_id}").text
+    assert "<clipPath" not in page and "Mossy Entrance" in page
+    assert client.get(f"/map-image/{game.session.campaign_id}").status_code == 404

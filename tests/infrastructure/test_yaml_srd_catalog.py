@@ -18,7 +18,7 @@ def test_premade_level_one_fighter_follows_srd_rules():
     # Chain Mail 16 + Defense fighting style 1.
     assert fighter.armor_class == 17
     assert fighter.armor == "Chain Mail"
-    greatsword = character_attack(fighter, "greatsword")
+    greatsword = character_attack(fighter)
     assert (greatsword.attack_bonus, greatsword.damage_dice, greatsword.damage_modifier) == (
         5, "2d6", 3,
     )

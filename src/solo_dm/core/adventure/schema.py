@@ -5,7 +5,7 @@ from collections import Counter
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from solo_dm.core.state.models import Ability, Attitude
+from solo_dm.core.state.models import Ability, Attitude, Coins
 
 
 class AdventureModel(BaseModel):
@@ -38,12 +38,20 @@ class CheckConsequence(AdventureModel):
 
 
 class ItemUse(AdventureModel):
-    """Using this item here sets the flag (M7: the coin in the fountain).
-    Locks with opens_on_flag open when it is set."""
+    """Using this item here, or paying this many coins (any denomination: the
+    cheapest go first), sets the flag (M7: a coin in the fountain). Locks with
+    opens_on_flag open when it is set."""
 
-    item: str
+    item: str | None = None
+    pay: int | None = Field(default=None, ge=1)
     set_flag: str
     used_up: bool = False
+
+    @model_validator(mode="after")
+    def _item_or_coins(self) -> "ItemUse":
+        if (self.item is None) == (self.pay is None):
+            raise ValueError("a use takes either an item or coins (pay)")
+        return self
 
 
 class SaveSpec(AdventureModel):
@@ -70,6 +78,9 @@ class Exit(AdventureModel):
     to: str
     direction: str
     hidden: Hidden | None = None
+    # A door, not an archway or an open passage: shown on the map (after M7,
+    # Azzinax flag 17). Locks say whether it is shut.
+    door: bool = False
 
 
 class Location(AdventureModel):
@@ -100,6 +111,15 @@ class EntityPlacement(AdventureModel):
     group: str | None = None
 
 
+class WeaponStats(AdventureModel):
+    """A found weapon (after M7): taking it adds it to the taker's weapons."""
+
+    ability: Ability = "STR"
+    damage_dice: str
+    damage_type: str
+    damage_penalty: str | None = None  # dice subtracted from damage (a curse)
+
+
 class ItemEffect(AdventureModel):
     """What using the item does, wherever it is used; it is then used up (M7)."""
 
@@ -128,6 +148,10 @@ class ItemPlacement(AdventureModel):
     hidden: Hidden | None = None
     on_take: OnTake | None = None
     effect: ItemEffect | None = None
+    # Money: taking it adds these coins to the taker's purse; it is not kept as
+    # an item (Hye-young's 8 sp, the copper in the crater).
+    coins: Coins | None = None
+    weapon: WeaponStats | None = None
     tags: tuple[str, ...] = ()
 
 
@@ -223,6 +247,7 @@ def _reference_problems(adventure: Adventure) -> list[str]:
         *[c.id for e in adventure.entities for c in e.checks],
     ]
     problems = [f"duplicate id '{i}'" for i, n in Counter(all_ids).items() if n > 1]
+    problems += [f"'{i}' is reserved for the party's money" for i in all_ids if i == "coins"]
     if adventure.start_location not in locations:
         problems.append(f"start_location '{adventure.start_location}' is not a location")
     for loc in adventure.locations:
@@ -239,6 +264,8 @@ def _reference_problems(adventure: Adventure) -> list[str]:
             problems.append(f"'{item.id}' has both a location and carried_by")
         elif item.carried_by not in (None, PARTY, *entities):
             problems.append(f"'{item.id}' is carried by unknown entity '{item.carried_by}'")
+        if item.coins is not None and item.weapon is not None:
+            problems.append(f"'{item.id}' cannot be both coins and a weapon")
         if item.carried_by is not None and item.hidden is not None:
             problems.append(f"'{item.id}' is carried, so it cannot be hidden")
     for placed in (*adventure.entities, *adventure.items):
@@ -251,7 +278,7 @@ def _reference_problems(adventure: Adventure) -> list[str]:
             problems.append(f"lock key '{lock.key}' is not an item")
     for loc in adventure.locations:
         problems += [f"'{loc.id}' uses unknown item '{u.item}'"
-                     for u in loc.uses if u.item not in items]
+                     for u in loc.uses if u.item is not None and u.item not in items]
     flags = {i.on_take.set_flag for i in adventure.items if i.on_take} | {
         u.set_flag for loc in adventure.locations for u in loc.uses
     } | {

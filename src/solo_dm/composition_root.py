@@ -117,7 +117,15 @@ def build_web_app(
         cost_report=lambda: CostLog(settings.paths.llm_call_log).report(),
         actor_id=SOLO_ACTOR,
         static=root / "static",
+        player_map=lambda adventure_id: _player_map(settings, adventure_id),
     ))
+
+
+def _player_map(settings, adventure_id: str):
+    try:
+        return adventure_source(settings).player_map(adventure_id)
+    except UnknownAdventure:  # a campaign of an adventure since removed
+        return None
 
 
 def main(argv: list[str] | None = None, root: Path = PROJECT_ROOT) -> int:

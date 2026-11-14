@@ -441,10 +441,10 @@ The gold adventure: `revenge_of_azzinax/` in the private repo `dnd-adventures` (
 
 **Done when:** Jelle plays the gold Azzinax adventure to the end on his phone, and each new mechanic has a scenario with a scripted playthrough.
 
-**After the first phone play test (Jelle, 2026-11-14).** Fixed in M7: freeing Min-soo could not be won (the check fired only for DEX and the interpreter could not see it; now a challenge with a goal), the narrator's memory (last three turns; creature activity out of room descriptions), talking to the guardian, the Runt joining the fight (`group`), the hero's own purse, leaked planning (`<narration>` tags), no initiative in the narration. Deferred by Jelle until after M7:
-- Money as amounts (8 sp, spend 1) instead of purses as items.
-- Choosing a weapon (wield a carried one); weapon stats for found weapons, and the Cursed Warhammer's -1d4.
-- Doors on the map; the book's own player map, revealed as the party explores (needs room outlines in `map.yaml`).
+**After the first phone play test (Jelle, 2026-11-14).** Fixed in M7: freeing Min-soo could not be won (the check fired only for DEX and the interpreter could not see it; now a challenge with a goal), the narrator's memory (last three turns; creature activity out of room descriptions), talking to the guardian, the Runt joining the fight (`group`), the hero's own purse, leaked planning (`<narration>` tags), no initiative in the narration. Deferred by Jelle until after M7, built in Goal E (2026-11-15):
+- Money as amounts (8 sp, spend 1) instead of purses as items. *Built:* `Coins` per denomination on the character (the Fighter starts with 18 gp); an item with `coins` is money, taken into the purse; a location's `uses` can `pay` coins, cheapest first; the party's money is the pack item `coins`. Scenario `coin_purse`.
+- Choosing a weapon (wield a carried one); weapon stats for found weapons, and the Cursed Warhammer's -1d4. *Built:* an item with `weapon` stats joins the weapons when taken; the `wield` action; `damage_penalty` dice are subtracted from each hit. Wielding takes the turn in a fight. Scenario `cursed_hammer`.
+- Doors on the map; the book's own player map, revealed as the party explores (needs room outlines in `map.yaml`). *Built:* `door: true` on exits, a door mark on the node map (filled while shut); `map.yaml` takes `player_image`, `cell_px` and `cells` per location, and the web map shows the image clipped to the discovered locations and the openings out of them, the node map folded under it. The clip is client-side: the image address shows the whole map (no image library in the box to crop it). Scenario `player_map`, image drawn by `scripts/draw_player_map_scenario.py`.
 - Still open from M7: hidden creatures (the Runt in the shadows, the goblin behind the statue), checks with preconditions or costs (the platform after Azzinax, the fall, DC 5 after a failure), the mushrooms' condition.
 
 **Where adventures live (Jelle, 2026-11-14): game and adventure data in separate repos.**
@@ -462,7 +462,7 @@ Decided by Jelle 2026-11-14 (supersedes the same day's "separate application" wi
 - **One skill per domain the engine can hold today:**
   | Skill | Writes |
   |---|---|
-  | `map` | `map.yaml`: rooms, corridors, openings and what each meets (the convention below), then the locations and exits |
+  | `map` | `map.yaml`: rooms, corridors, openings and what each meets (the convention below), then the locations and exits (with `door: true` where the opening is a door); for a book with a player map also `player_image`, `cell_px` and each location's `cells` (Goal E, see `AdventureMap` in `core/adventure/map_schema.py`) |
   | `challenges` | every check as a challenge: id, goal, ability, skill, DC, what success sets |
   | `creatures` | SRD reference or own stat block, place, attitude, group, activity, the check that talks one round |
   | `items-locks-hazards` | items and their uses, locks on both sides of a door, hazards, the win flag |

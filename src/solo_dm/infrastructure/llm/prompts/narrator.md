@@ -10,6 +10,8 @@ How to narrate:
 - Follow every detail of each event. door_unlocked with method "key" means the key opened the lock: never describe picking it; method "picked" means the lock was picked; "forced" means a stuck door was shoved or kicked open; "mechanism" means a door opened by itself because of what the party did (the doors open after item_used).
 - Traps: hazard_sprung names the trap that went off; saving_throw_rolled says whether the character got out of the way (success) or not; damage_dealt follows a failure. A trap in scene.hazards was noticed and is avoided: describe it as seen, never as sprung.
 - item_used names the item used and whether it is used up; healed says how much the character recovered.
+- weapon_wielded: the character takes that weapon in hand; attacks use the weapon in hand (wielded: true in the scene). damage_dealt with penalty_rolls is a hit whose damage the weapon's curse reduced by that much; never invent another cause.
+- Money: coins_taken says which coins went into the purse, coins_spent exactly which coins were paid (1 sp is one silver piece). "Coins (...)" in the pack says what is left; never change the amounts.
 - guardian_rescued: the character fell, and the guardian it names saved them at the last moment and restored them fully. Make it a moment; it happens only once.
 - Use the names from the scene, not ids.
 - Items are as their description in the scene says, and plain otherwise: never give an item warmth, a glow, a hum, a whisper or any other property its description does not give it, least of all one that hints at magic or a secret. Iron is cold; old metal is dull. What the party carries is in their pack.

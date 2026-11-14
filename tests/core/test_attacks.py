@@ -6,13 +6,13 @@ from .builders import fighter, goblin, state_with
 
 
 def test_fighter_greatsword_profile_uses_strength_and_proficiency():
-    profile = character_attack(fighter(), "greatsword")
+    profile = character_attack(fighter())
     assert (profile.attack_bonus, profile.damage_dice, profile.damage_modifier) == (5, "2d6", 3)
 
 
 def test_hit_that_drops_a_creature_to_zero_kills_it():
     state = state_with(fighter(), creatures=[goblin()])
-    attack = character_attack(fighter(), "greatsword")
+    attack = character_attack(fighter())
     # d20 10 + 5 = 15 vs AC 15 hits; 2d6 = 4 + 5, +3 -> 12 damage, goblin has 10 HP.
     events = resolve_attack(state, "hero", "goblin", attack, FixedDice([10, 4, 5]))
     assert [e.type for e in events] == ["attack_rolled", "damage_dealt", "creature_died"]
@@ -24,7 +24,7 @@ def test_hit_that_drops_a_creature_to_zero_kills_it():
 
 def test_hit_that_leaves_hp_reduces_it():
     state = state_with(fighter(), creatures=[goblin()])
-    attack = character_attack(fighter(), "greatsword")
+    attack = character_attack(fighter())
     events = resolve_attack(state, "hero", "goblin", attack, FixedDice([15, 1, 2]))  # 6 damage
     after = apply_events(state, events)
     assert [e.type for e in events] == ["attack_rolled", "damage_dealt"]
@@ -34,7 +34,7 @@ def test_hit_that_leaves_hp_reduces_it():
 
 def test_roll_below_armor_class_misses_without_damage():
     state = state_with(fighter(), creatures=[goblin()])
-    attack = character_attack(fighter(), "greatsword")
+    attack = character_attack(fighter())
     events = resolve_attack(state, "hero", "goblin", attack, FixedDice([9]))  # 14 vs AC 15
     assert [e.type for e in events] == ["attack_rolled"]
     assert events[0].hit is False
@@ -43,7 +43,7 @@ def test_roll_below_armor_class_misses_without_damage():
 
 def test_natural_one_always_misses_and_natural_twenty_crits_with_double_dice():
     state = state_with(fighter(), creatures=[goblin(hp=40)])
-    attack = character_attack(fighter(), "greatsword")
+    attack = character_attack(fighter())
     assert resolve_attack(state, "hero", "goblin", attack, FixedDice([1]))[0].hit is False
     # Critical: 4d6 instead of 2d6 (1+1+1+1), modifier once: 4 + 3 = 7.
     events = resolve_attack(state, "hero", "goblin", attack, FixedDice([20, 1, 1, 1, 1]))

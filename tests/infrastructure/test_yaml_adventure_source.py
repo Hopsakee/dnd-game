@@ -68,3 +68,13 @@ def test_an_adventure_brings_its_own_stat_blocks(tmp_path):
     blocks = YamlAdventureSource(tmp_path).stat_blocks("azzinax")
     assert blocks["goblin_runt"].hit_points == 2
     assert YamlAdventureSource(ADVENTURES).stat_blocks("core_five_rooms") == {}
+
+
+def test_an_adventure_folder_can_hold_a_map_with_a_player_image():
+    from solo_dm.composition_root import PROJECT_ROOT
+    source = YamlAdventureSource(PROJECT_ROOT / "adventures")
+    found = source.player_map("player_map")  # by the adventure's own id, as campaigns store it
+    assert found is not None
+    assert found.map.locations["hall"].cells == ((1, 1, 3, 4),)
+    assert found.image.name == "player_map.png" and found.size == (200, 120)
+    assert source.player_map("core_five_rooms") is None

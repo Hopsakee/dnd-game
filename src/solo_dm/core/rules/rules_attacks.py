@@ -12,8 +12,9 @@ from solo_dm.core.state.events import AttackRolled, DamageDealt, Event
 from solo_dm.core.state.models import AttackProfile, Character, GameState
 
 
-def character_attack(character: Character, weapon_id: str) -> AttackProfile:
-    weapon = next(w for w in character.weapons if w.weapon_id == weapon_id)
+def character_attack(character: Character) -> AttackProfile:
+    """The attack with the weapon in hand."""
+    weapon = character.weapon_in_hand()
     ability_modifier = character.abilities.modifier(weapon.ability)
     return AttackProfile(
         name=weapon.name,
@@ -21,6 +22,7 @@ def character_attack(character: Character, weapon_id: str) -> AttackProfile:
         damage_dice=weapon.damage_dice,
         damage_modifier=ability_modifier,
         damage_type=weapon.damage_type,
+        damage_penalty=weapon.damage_penalty,
     )
 
 
@@ -50,7 +52,8 @@ def resolve_attack(
     count = damage.count * 2 if critical else damage.count
     rolls = dice.roll(f"{count}d{damage.sides}").rolls
     modifier = damage.modifier + attack.damage_modifier
-    amount = max(0, sum(rolls) + modifier)
+    penalty = dice.roll(attack.damage_penalty).rolls if attack.damage_penalty else []
+    amount = max(0, sum(rolls) + modifier - sum(penalty))
     events.append(
         DamageDealt(
             actor_id=attacker_id,
@@ -59,6 +62,7 @@ def resolve_attack(
             modifier=modifier,
             amount=amount,
             damage_type=attack.damage_type,
+            penalty_rolls=penalty,
         )
     )
     if hp_of(state, target_id) - amount <= 0:

@@ -11,7 +11,7 @@ locations:
     description: >
       Damp stone stairs lead down from the hillside. A rusted gate stands open to the north.
     exits:
-      - {id: entrance_to_hall, to: hall, direction: north}
+      - {id: entrance_to_hall, to: hall, direction: north, door: true}
     tags: [shrine]
 
   - id: hall
@@ -20,10 +20,10 @@ locations:
       Four cracked pillars hold up a low ceiling. Doorways lead east and west; to the
       north a heavy iron-bound door bears a keyhole shaped like a sun.
     exits:
-      - {id: hall_to_entrance, to: entrance, direction: south}
+      - {id: hall_to_entrance, to: entrance, direction: south, door: true}
       - {id: hall_to_guard_room, to: guard_room, direction: east}
       - {id: hall_to_storeroom, to: storeroom, direction: west}
-      - {id: hall_to_shrine, to: shrine, direction: north}
+      - {id: hall_to_shrine, to: shrine, direction: north, door: true}
     tags: [shrine]
 
   - id: guard_room
@@ -48,7 +48,7 @@ locations:
       Water covers the floor ankle-deep. On a stone altar lies an amulet that glows faintly.
     senses: a slow drip of water
     exits:
-      - {id: shrine_to_hall, to: hall, direction: south}
+      - {id: shrine_to_hall, to: hall, direction: south, door: true}
     tags: [shrine]
 
 entities:

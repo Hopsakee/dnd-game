@@ -92,7 +92,7 @@ def test_play_stores_a_campaign_that_can_be_listed_rewound_and_resumed(
     assert main(["play", "--fake", "--campaign", "1"], root=root) == 0
     out = capsys.readouterr().out
     assert "Resuming campaign 1 after turn 1" in out
-    assert "Pillared Hall" in out and "pack: empty" in out
+    assert "Pillared Hall" in out and "pack: Coins (18 gp)" in out
 
     assert main(["turns", "1"], root=root) == 0
     out = capsys.readouterr().out
