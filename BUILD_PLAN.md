@@ -76,6 +76,8 @@ solo_dm/
 ├── lore/                     # markdown lore files with tags in front matter
 ├── srd/                      # SRD 5.2 data needed by the engine (monsters, items)
 ├── campaigns/                # SQLite campaign files — gitignored
+├── evals/                    # ingestion evals and the repo's own test book (M8)
+├── src/adventure_ingest/     # book -> adventure YAML (M8); imports only solo_dm.core.adventure
 ├── src/solo_dm/
 │   ├── core/
 │   │   ├── rules/            # checks, attacks, damage, conditions, difficulty
@@ -421,19 +423,92 @@ Out of scope: traps, secret-door mechanisms, hidden creatures and Stealth, time 
 
 **Done when:** Jelle can play a campaign from his phone over Tailscale, including resuming a campaign started in the terminal.
 
-### M7 — Ingestion + evals (outline only; plan in detail after M6)
-- Convert an adventure book (PDF) into the adventure YAML format.
-- Hand-verified gold-standard adventures; deterministic field-by-field evals (rooms, exits, stat blocks, items, triggers), with a model judge only for fuzzy fields like whether descriptions kept key details.
-- Every in-game error traced back to ingestion becomes a new eval case.
-- SRD 5.2 vs 2014 stat-block layout differences handled here.
+### M7 — Engine for Revenge of Azzinax, and its gold adventure
+Planned 2026-11-14 with Jelle. Ingestion (M8) needs a hand-verified target to measure against, and that target must be playable. So M7 grows the engine by what Azzinax needs, and Azzinax is converted by hand into the gold adventure.
+
+The engine learns (all tested through the turn pipeline, as before):
+- **Saving throws**: a d20 plus ability modifier (plus proficiency where the character has it) against a DC. Python rolls; the model never picks the DC.
+- **Hazards and traps**: a hazard in a location. It can be noticed by passive Perception, or found by searching (as hidden things are now), and it triggers when entered unnoticed: a save against a DC, with damage on a failure. For the falling rocks, the spike pit and the poison mushrooms.
+- **Stuck doors**: an exit forced open with a Strength (Athletics) check against a DC, next to locks with a key or a pick DC.
+- **Using an item to open something**: using an item at a place sets a flag, and locks can open on a flag. For the coin in the fountain, which opens all the doors of room 3; the coin is used up.
+- **A healing potion**: an item with an effect (heal 2d4+2), used up when drunk.
+- **A rescue at 0 HP**: an adventure may name a guardian that, once per adventure, brings the hero back to full HP instead of defeat. For Spiritus Magehunter, and an answer to the harsh solo fights of the M6 play test.
+
+The conversion simplifies, for now: ranged attacks become melee; money becomes plain items; rests are dropped; the magic items keep their description but have no effect; the mushrooms' disadvantage is left out (no conditions yet); Spiritus's advice is ordinary talk, and he does not fight.
+
+The gold adventure: `revenge_of_azzinax/` in the private repo `dnd-adventures` (see "Where adventures live" below). Drafted from the book and the map, then checked by Jelle against the book. The four homebrew stat blocks and the baboons and crawling claws go in with it, outside `srd/` where they are not SRD. The repo gets a scenario per new mechanic, as for earlier milestones.
+
+**Done when:** Jelle plays the gold Azzinax adventure to the end on his phone, and each new mechanic has a scenario with a scripted playthrough.
+
+**Where adventures live (Jelle, 2026-11-14): game and adventure data in separate repos.**
+- `dnd-game` (this repo): the engine, web app, ingestion application and tests, plus only the data the tests check the engine with: `core_five_rooms`, the scenarios, their lore, and M8's own small test book.
+- `Hopsakee/dnd-adventures` (private, no code): converted books with their gold versions, lore that belongs to a book, and the ingest work folders with the manual model answers. Changed through PRs like this repo.
+- The source books (PDFs, maps, zips) stay on Drive: large, unchanging, backed up to the NAS. In the box: `~/transport/dndgame/`.
+- The game reads adventures from both places: `settings.yaml` gets a second adventures path, and `compose.yaml` mounts a clone of `dnd-adventures` read-only, so no image contains a copyrighted adventure.
+- Supersedes "a gitignored `adventures/private/`" (2026-11-13).
+
+### M8 — Ingestion: book to adventure, a separate application
+Decided by Jelle 2026-11-14: converting a book is its own application, not part of the game. Same repo, separate package and command, its own tests and evals.
+
+- **Package `src/adventure_ingest/`** with the command `uv run adventure-ingest`. It may import the engine's adventure schema (`solo_dm.core.adventure`, plus the models that schema uses) and nothing else from `solo_dm`; `solo_dm` never imports it. The architecture test enforces both.
+- **Stages with files between them.** Each stage reads the previous stage's file and writes its own, in a work folder per book in `dnd-adventures` (`ingest/<book>/`), so the manual answers are kept and versioned. So a stage can be rerun, inspected, or done by hand by writing its file:
+  1. `extract`: PDF (or Fantasy Grounds XML) to text and page images, plus a report of pages that are images with little text (Azzinax page 6).
+  2. Model steps, one per part: locations and their descriptions; links between locations; stat blocks; items, locks, checks and hazards; the goal. Each can run **by hand**. The command writes a structured prompt and lists the files to attach (e.g. the map image), Jelle runs it in a Claude chat (Fable), saves the answer in the work folder, and `adventure-ingest check <part>` validates it at once. Running a step through the API instead is a later option, the same prompt with a different runner.
+  3. `assemble`: the parts into one `adventure.yaml`, validated by the engine's schema.
+  4. `verify`: deterministic playability checks. Every location is reachable; no key is behind its own lock; the win flag can be set; every monster has a stat block; every obstacle can be passed by the hero's abilities.
+- **Evals**, in `evals/` and run with `uv run adventure-ingest eval <book>`: the output of a stage against the gold adventure, field by field (locations, links, monsters and where they are, items, locks, checks, hazards, the goal), as precision and recall per field. A model judge only for fuzzy fields, such as whether a description kept its key details. Every in-game error traced back to ingestion becomes a new eval case.
+- **Copyright and evals:** the gold adventures of bought or personal-use books live only in the private `dnd-adventures`, so their evals run only where that repo is. For evals that run anywhere (and in `pytest`), the repo gets one small book of our own: an original adventure written as a PDF with a map image, plus its gold.
+- SRD 5.2 versus 2014 stat-block layouts are handled in the stat-block step.
+
+**Done when:** Azzinax goes from PDF and map to an adventure that passes `verify`, with the manual steps done by Jelle, and `eval` shows how close it comes to the gold; the repo's own book passes its evals in `pytest`.
+
+### M9 — Scaling to one player (The Goblin Cave)
+- An `adventure-ingest scale` stage: each encounter's difficulty for the party the book was written for, cut to one character's budget (fewer or weaker monsters), deterministically.
+- The obstacle check of `verify` covers the skills a party shares (Arcana, Thieves' Tools).
+- First check whether SRD 5.2 has the per-character XP budget table (see the scaling decision below).
+
+**Done when:** The Goblin Cave, converted and scaled from a party of 5 to one level-1 Fighter, is playable to the end, and an eval checks the scaled encounters.
+
+### Test books and findings for M7-M9
+
+**Test books in order (Jelle, 2026-11-14).** Skyhorn needs too much engine to come first, so start small and change one thing at a time:
+
+1. **Revenge of Azzinax** (Alexander Thomas): ingestion first. Written for one level-1 player, so no scaling at all.
+2. **The Goblin Cave** (Bruno71): scaling next. Written for a party of 5 at level 1-3, with a monster set per level.
+3. **Dead Ends: Grungus the Ghoulish** (lowerlevels.ca): later. For 3-5 level-1 players; a spellcasting boss, saving throws, a swamp.
+4. Skyhorn Lighthouse (below): last.
+
+All three are in `~/transport/dndgame/` in the box. Like Skyhorn, converted adventures stay out of git. The Goblin Cave says "Permission granted to print or photocopy this document for personal use only". The other two's licences are not checked.
+
+**Scaling to one player: shrink the fights when converting (Jelle, 2026-11-14).** Of the three options considered, this one: the conversion computes each encounter's difficulty for the party the book was written for and cuts it to one character's budget (fewer or weaker monsters). It is deterministic, so evals can check it, and the adventure text stays as written. Not chosen for now: Python-run companions (keeps the encounters, more engine work, a step towards multiplayer) and a stronger hero (bends 5e). Scaling is more than combat: the conversion must also check that one Fighter can solve every obstacle (skills a party would share, such as Arcana or Thieves' Tools), alone or through the ability-check fallback. Open: whether SRD 5.2 contains the per-character XP budget table (the 2024 DMG has one); check before relying on it.
+
+**Revenge of Azzinax: what extraction gave (2026-11-14, `pymupdf4llm`, 8 pages, 1,367 words).**
+- Text: a hook (a village, an old woman, a kidnapped grandson), a forest encounter (2 baboons), and a dungeon guide table: 9 rooms and 8 corridor features (a, c, e, i, m, n, r, s). The goal is clear: defeat Azzinax in room 4 and free Min-soo.
+- **The connections are only on the map.** Room entries say which wall and what kind of door, but mostly not where they lead (only "leads to room #5" and the like for a few). The graph comes from the map image (`Lair of Azzinax 01`, 1751×2251 PNG, grid). The gold standard is drawn by hand; automatic extraction from map images is a separate question.
+- **The stat blocks are images.** Page 6 (Azzinax, Goblin Runt, Modified Goblin, Spiritus Magehunter) extracts as an empty heading. They need a vision model or hand entry. An eval case: the extracted text must not silently miss a page of stat blocks.
+- Monsters: baboons and crawling claws (Monster Manual; whether they are in SRD 5.2 is not checked), plus four homebrew stat blocks.
+
+**Engine gaps Azzinax exposes** (engine as of M6). What the engine gets and what the conversion simplifies away is decided in M7 above:
+- Traps and hazards with saving throws (falling rocks DEX 15, poison mushrooms CON 15, a spike pit). The engine has no saving throws and no traps.
+- Conditions: disadvantage on the next roll.
+- Ranged attacks (shortbows, darts). Combat is melee only.
+- Stuck doors to force (a STR check); the schema has locks with a key or a pick DC, not "stuck".
+- A puzzle: a coin tossed into the fountain opens all doors of room 3. There is no currency, and "use this item here" does not unlock exits.
+- An ally, Spiritus Magehunter: gives advice, restores the hero to full HP once at 0 HP, and fights in the final battle. Also an answer to the harsh solo fights seen in the M6 play test (one goblin fight in seven is lost, 2,000 runs).
+- Consumables and rests: a healing potion (2d4+2); a short or long rest after the baboons.
+- Magic items with an effect: Ring of Safety (+1 saving throws), Cursed Warhammer (-1d4 damage).
+- Talking before a fight: Azzinax talks first; the Goblin Runt ambushes if the hero turns hostile.
+- A check with a precondition and a cost: after Azzinax is dead, Acrobatics DC 10 to reach the platform, or fall 10 feet.
+- Money as a reward (sp, gp, gems).
+- Places outside the dungeon: the village and the forest path.
 
 **First test book (Jelle, 2026-11-13): The Secrets of Skyhorn Lighthouse** (Arcane Library; 5th level, party of 4-5).
 - Where: `~/transport/dndgame/1060290-The_Secrets_of_Skyhorn_Lighhouse_V8-1.zip` in the box (PDF, print-friendly PDF, maps, combat cards, a Fantasy Grounds `.mod`).
-- Copyright: a purchased product. The converted adventure stays out of git (e.g. a gitignored `adventures/private/`); the repo holds code, evals and findings only.
+- Copyright: a purchased product. The converted adventure goes in the private `dnd-adventures` repo (2026-11-14; was: a gitignored `adventures/private/`); this repo holds code, evals and findings only.
 - Sources, use both and compare: the PDF is the real path, read with `pymupdf4llm` from the wheel store (23 pages). The `.mod`'s `db.xml` is clean structured XML (22 story sections, ~6,400 words; 16 NPCs, 4 items, 8 treasure parcels, 8 battles) and shows what PDF extraction loses.
 - First extraction eval case: the ligatures fl and fi come out as "2" ("2laps open", "the 2irst turn").
 - Scenes: rumours in the harbour; a water elemental attacks the ship; the lighthouse under siege by eelfolk; the caves below (sharks, hostages, the summoning room); aftermath.
-- Engine gaps it exposes (engine as of M5): a party of 4-5 at level 5; spells and magic items (Bead of Force, Dagger of Venom, Potion of Water Breathing, Bowl of Commanding Water Elementals); swimming, underwater combat and holding breath; morale (sharks flee below 15 HP); allied NPCs (the ship's crew, Lucien) and NPCs with goals to talk to; travel scenes by ship; non-SRD monsters (four eelfolk) with their own stat blocks; treasure parcels as loot; maps that exist only as images. Planning M7 means deciding which of these the engine gets and which the conversion simplifies away.
+- Engine gaps it exposes (engine as of M5): a party of 4-5 at level 5; spells and magic items (Bead of Force, Dagger of Venom, Potion of Water Breathing, Bowl of Commanding Water Elementals); swimming, underwater combat and holding breath; morale (sharks flee below 15 HP); allied NPCs (the ship's crew, Lucien) and NPCs with goals to talk to; travel scenes by ship; non-SRD monsters (four eelfolk) with their own stat blocks; treasure parcels as loot; maps that exist only as images. Which of these the engine gets and which the conversion simplifies away is decided when Skyhorn's turn comes (after M9).
 
 ---
 
@@ -472,7 +547,7 @@ Out of scope: traps, secret-door mechanisms, hidden creatures and Stealth, time 
 | M1–M6 building | One agent. Tightly coupled, sequential by design, small codebase. |
 | End-of-milestone review | Optional: one reviewer agent that sees the code, not the builder's reasoning. Only when Jelle asks; `open-pr` already runs a security review. |
 | Bulk data entry (SRD stat blocks, scenario adventures, lore files) once the schema is stable | A team may help if there are many items; each item is checked by the loader's validation. |
-| M7 ingestion (per chapter or per book) and running evals against several gold adventures | Team. Truly independent pieces, each checked by evals. Decide the shape when M7 is planned. |
+| M8 ingestion (per chapter or per book) and running evals against several gold adventures | Team. Truly independent pieces, each checked by evals. Decide the shape when M8 starts. |
 
 A team costs several times the tokens of one agent and each handoff loses detail. When in doubt, one agent.
 
@@ -482,9 +557,9 @@ Prices per million tokens, input / output (2026-11): Fable 5.2 $8 / $40, Opus 5.
 
 | Model | Use for | Not for |
 |---|---|---|
-| **Opus 5.5** (default) | All building and design in M1–M7: code, tests, prompts, debugging, planning the next milestone. | — |
-| **Fable 5.2** | Hard, high-stakes thinking where a wrong call is expensive: designing the M7 ingestion pipeline and its evals; a bug or design problem Opus has failed at twice. Switch for that task, then switch back. | Routine milestone work: twice the price of Opus for no visible gain. |
-| **Sonnet 5.5** | Mechanical, well-specified work inside a team: transcribing SRD stat blocks into YAML, drafting scenario adventures and lore files against a fixed schema, M7 per-chapter workers. | Architecture, the core models, anything that sets a pattern others follow. |
+| **Opus 5.5** (default) | All building and design in M1–M9: code, tests, prompts, debugging, planning the next milestone. | — |
+| **Fable 5.2** | Hard, high-stakes thinking where a wrong call is expensive: designing the M8 ingestion pipeline and its evals; a bug or design problem Opus has failed at twice. Switch for that task, then switch back. | Routine milestone work: twice the price of Opus for no visible gain. |
+| **Sonnet 5.5** | Mechanical, well-specified work inside a team: transcribing SRD stat blocks into YAML, drafting scenario adventures and lore files against a fixed schema, M8 per-chapter workers. | Architecture, the core models, anything that sets a pattern others follow. |
 | **Haiku 5.5** | The game's runtime model (interpreter and narrator, see section 2). | Building the game. |
 
 Rule of thumb: the model that *decides* is Opus (Fable when stuck); the model that *fills in* against a validator can be Sonnet.
