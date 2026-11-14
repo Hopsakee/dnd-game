@@ -76,7 +76,6 @@ solo_dm/
 ├── lore/                     # markdown lore files with tags in front matter
 ├── srd/                      # SRD 5.2 data needed by the engine (monsters, items)
 ├── campaigns/                # SQLite campaign files — gitignored
-├── ingest/                   # work folders per book (M8) — gitignored
 ├── evals/                    # ingestion evals and the repo's own test book (M8)
 ├── src/adventure_ingest/     # book -> adventure YAML (M8); imports only solo_dm.core.adventure
 ├── src/solo_dm/
@@ -437,21 +436,28 @@ The engine learns (all tested through the turn pipeline, as before):
 
 The conversion simplifies, for now: ranged attacks become melee; money becomes plain items; rests are dropped; the magic items keep their description but have no effect; the mushrooms' disadvantage is left out (no conditions yet); Spiritus's advice is ordinary talk, and he does not fight.
 
-The gold adventure: `adventures/private/revenge_of_azzinax/` (gitignored, copyrighted). Drafted from the book and the map, then checked by Jelle against the book. The four homebrew stat blocks and the baboons and crawling claws go in with it, outside `srd/` where they are not SRD. The repo gets a scenario per new mechanic, as for earlier milestones.
+The gold adventure: `revenge_of_azzinax/` in the private repo `dnd-adventures` (see "Where adventures live" below). Drafted from the book and the map, then checked by Jelle against the book. The four homebrew stat blocks and the baboons and crawling claws go in with it, outside `srd/` where they are not SRD. The repo gets a scenario per new mechanic, as for earlier milestones.
 
 **Done when:** Jelle plays the gold Azzinax adventure to the end on his phone, and each new mechanic has a scenario with a scripted playthrough.
+
+**Where adventures live (Jelle, 2026-11-14): game and adventure data in separate repos.**
+- `dnd-game` (this repo): the engine, web app, ingestion application and tests, plus only the data the tests check the engine with: `core_five_rooms`, the scenarios, their lore, and M8's own small test book.
+- `Hopsakee/dnd-adventures` (private, no code): converted books with their gold versions, lore that belongs to a book, and the ingest work folders with the manual model answers. Changed through PRs like this repo.
+- The source books (PDFs, maps, zips) stay on Drive: large, unchanging, backed up to the NAS. In the box: `~/transport/dndgame/`.
+- The game reads adventures from both places: `settings.yaml` gets a second adventures path, and `compose.yaml` mounts a clone of `dnd-adventures` read-only, so no image contains a copyrighted adventure.
+- Supersedes "a gitignored `adventures/private/`" (2026-11-13).
 
 ### M8 — Ingestion: book to adventure, a separate application
 Decided by Jelle 2026-11-14: converting a book is its own application, not part of the game. Same repo, separate package and command, its own tests and evals.
 
 - **Package `src/adventure_ingest/`** with the command `uv run adventure-ingest`. It may import the engine's adventure schema (`solo_dm.core.adventure`, plus the models that schema uses) and nothing else from `solo_dm`; `solo_dm` never imports it. The architecture test enforces both.
-- **Stages with files between them.** Each stage reads the previous stage's file and writes its own, in a work folder per book (`ingest/<book>/`, gitignored). So a stage can be rerun, inspected, or done by hand by writing its file:
+- **Stages with files between them.** Each stage reads the previous stage's file and writes its own, in a work folder per book in `dnd-adventures` (`ingest/<book>/`), so the manual answers are kept and versioned. So a stage can be rerun, inspected, or done by hand by writing its file:
   1. `extract`: PDF (or Fantasy Grounds XML) to text and page images, plus a report of pages that are images with little text (Azzinax page 6).
   2. Model steps, one per part: locations and their descriptions; links between locations; stat blocks; items, locks, checks and hazards; the goal. Each can run **by hand**. The command writes a structured prompt and lists the files to attach (e.g. the map image), Jelle runs it in a Claude chat (Fable), saves the answer in the work folder, and `adventure-ingest check <part>` validates it at once. Running a step through the API instead is a later option, the same prompt with a different runner.
   3. `assemble`: the parts into one `adventure.yaml`, validated by the engine's schema.
   4. `verify`: deterministic playability checks. Every location is reachable; no key is behind its own lock; the win flag can be set; every monster has a stat block; every obstacle can be passed by the hero's abilities.
 - **Evals**, in `evals/` and run with `uv run adventure-ingest eval <book>`: the output of a stage against the gold adventure, field by field (locations, links, monsters and where they are, items, locks, checks, hazards, the goal), as precision and recall per field. A model judge only for fuzzy fields, such as whether a description kept its key details. Every in-game error traced back to ingestion becomes a new eval case.
-- **Copyright and evals:** the gold adventures of bought or personal-use books stay out of git, so their evals run only where those files are. For evals that run anywhere (and in `pytest`), the repo gets one small book of our own: an original adventure written as a PDF with a map image, plus its gold.
+- **Copyright and evals:** the gold adventures of bought or personal-use books live only in the private `dnd-adventures`, so their evals run only where that repo is. For evals that run anywhere (and in `pytest`), the repo gets one small book of our own: an original adventure written as a PDF with a map image, plus its gold.
 - SRD 5.2 versus 2014 stat-block layouts are handled in the stat-block step.
 
 **Done when:** Azzinax goes from PDF and map to an adventure that passes `verify`, with the manual steps done by Jelle, and `eval` shows how close it comes to the gold; the repo's own book passes its evals in `pytest`.
@@ -498,7 +504,7 @@ All three are in `~/transport/dndgame/` in the box. Like Skyhorn, converted adve
 
 **First test book (Jelle, 2026-11-13): The Secrets of Skyhorn Lighthouse** (Arcane Library; 5th level, party of 4-5).
 - Where: `~/transport/dndgame/1060290-The_Secrets_of_Skyhorn_Lighhouse_V8-1.zip` in the box (PDF, print-friendly PDF, maps, combat cards, a Fantasy Grounds `.mod`).
-- Copyright: a purchased product. The converted adventure stays out of git (e.g. a gitignored `adventures/private/`); the repo holds code, evals and findings only.
+- Copyright: a purchased product. The converted adventure goes in the private `dnd-adventures` repo (2026-11-14; was: a gitignored `adventures/private/`); this repo holds code, evals and findings only.
 - Sources, use both and compare: the PDF is the real path, read with `pymupdf4llm` from the wheel store (23 pages). The `.mod`'s `db.xml` is clean structured XML (22 story sections, ~6,400 words; 16 NPCs, 4 items, 8 treasure parcels, 8 battles) and shows what PDF extraction loses.
 - First extraction eval case: the ligatures fl and fi come out as "2" ("2laps open", "the 2irst turn").
 - Scenes: rumours in the harbour; a water elemental attacks the ship; the lighthouse under siege by eelfolk; the caves below (sharks, hostages, the summoning room); aftermath.
