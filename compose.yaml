@@ -35,6 +35,9 @@ services:
       - campaigns:/app/campaigns
       - logs:/app/logs
       - ./.env.solo_dm:/app/.env.solo_dm:ro
+      # The books (M7): a clone of the private dnd-adventures repo next to this
+      # one. settings.yaml looks for it at ../dnd-adventures, which is here.
+      - ../dnd-adventures:/dnd-adventures:ro
     restart: unless-stopped
 
 volumes:

@@ -123,6 +123,29 @@ a CDN; upgrading htmx means replacing that file. Not `fast_app()`: it adds a
 route that serves any `.yaml`, `.txt` and similar file under the working
 directory, `..` included.
 
+M7: what Revenge of Azzinax needs. Adventures can now have:
+
+- `hazards` in a location: a trap with a saving throw (`save: {ability, dc}`),
+  damage on a failure, and optionally `hidden: {dc}`, so that noticing it
+  (passive Perception or a search) avoids it. A trap springs once.
+- `force_dc` on a lock: a stuck door, forced open with Strength (Athletics);
+  `open`, `force north` or `kick the door`.
+- `uses` in a location: using a carried item there sets a flag
+  (`toss the coin into the fountain`), and locks with `opens_on_flag` open on it.
+- `effect: {heal: 2d4+2}` on an item: a potion, used up when drunk.
+- `guardian: {name, rescues}`: someone who brings the hero back to full hit
+  points instead of a defeat, that many times.
+- `dc` on a check: the DC the book states, instead of one Python derives.
+- `creatures/<id>.yaml` next to an adventure: its own stat blocks, for monsters
+  outside the SRD.
+
+The Fighter now makes saving throws (proficient in STR and CON). Each mechanic
+has a scenario in `adventures/scenarios/`. Books live in the private repo
+`dnd-adventures`, cloned next to this one: `settings.yaml` reads
+`extra_adventures: [../dnd-adventures]`, and in Docker `compose.yaml` mounts
+that clone, so on the Mac clone it next to `dnd-game` before
+`docker compose up`.
+
 ## Commands
 
 ```bash

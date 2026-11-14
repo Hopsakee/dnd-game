@@ -50,7 +50,7 @@ from starlette.responses import RedirectResponse, Response
 from starlette.staticfiles import StaticFiles
 
 from solo_dm.core.ports import CampaignSummary
-from solo_dm.core.turn.player_view import expand_shortcut
+from solo_dm.core.turn.player_view import exit_label, expand_shortcut
 from solo_dm.core.turn.scene import SceneContext
 from solo_dm.core.turn.session import GameSession, TurnRecord
 from solo_dm.infrastructure.llm.cost_log import LLMUnavailable
@@ -273,7 +273,7 @@ def outcome_text(outcome: str) -> str:
 
 def room_view(scene: SceneContext):
     exits = ", ".join(
-        f"{e.direction} ({e.leads_to or 'unexplored'}{', locked' if e.locked else ''})"
+        exit_label(e)
         for e in scene.exits)
     parts = [P(Span(scene.location_name, cls="room-name")),
              P(scene.description.strip()), P(f"Exits: {exits}")]
@@ -282,6 +282,8 @@ def room_view(scene: SceneContext):
             c.name + ("" if c.alive else " (dead)") for c in scene.creatures)))
     if scene.items:
         parts.append(P("Items: " + ", ".join(i.name for i in scene.items)))
+    if scene.hazards:
+        parts.append(P("Noticed: " + ", ".join(h.name for h in scene.hazards)))
     if scene.nearby:
         parts.append(P("Nearby: " + "; ".join(f"{n.direction}: {n.senses}"
                                               for n in scene.nearby)))
@@ -296,11 +298,12 @@ def room_panel(scene: SceneContext, oob: bool = False):
 
 def quick_actions(scene: SceneContext) -> list[str]:
     """Buttons for what can be done here; every one is a line the player could type."""
-    actions = [f"go {e.direction}" for e in scene.exits]
+    actions = [f"force {e.direction}" if e.stuck else f"go {e.direction}" for e in scene.exits]
     actions += [f"attack {c.name}" for c in scene.creatures
                 if c.alive and c.attitude == "hostile"]
     actions += [f"search {c.name}" for c in scene.creatures if not c.alive]
     actions += [f"take {i.name}" for i in scene.items]
+    actions += [f"use {i.name}" for m in scene.party for i in m.inventory]
     return actions + ["search", "look", "inv", "hp", "map"]
 
 

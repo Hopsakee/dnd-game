@@ -26,6 +26,16 @@ class CheckRolled(Event):
     success: bool
 
 
+class SavingThrowRolled(Event):
+    type: Literal["saving_throw_rolled"] = "saving_throw_rolled"
+    ability: Ability
+    d20: int
+    modifier: int
+    dc: int
+    total: int
+    success: bool
+
+
 class AttackRolled(Event):
     type: Literal["attack_rolled"] = "attack_rolled"
     target_id: str
@@ -54,6 +64,14 @@ class CreatureDied(Event):
 class CharacterDefeated(Event):
     type: Literal["character_defeated"] = "character_defeated"
     target_id: str
+
+
+class GuardianRescued(Event):
+    """At 0 hit points the adventure's guardian restores the hero to full (M7)."""
+
+    type: Literal["guardian_rescued"] = "guardian_rescued"
+    target_id: str
+    guardian: str
 
 
 class InitiativeRoll(BaseModel):
@@ -102,7 +120,7 @@ class LocationDiscovered(Event):
 class DoorUnlocked(Event):
     type: Literal["door_unlocked"] = "door_unlocked"
     exit_id: str
-    method: Literal["key", "picked"]
+    method: Literal["key", "picked", "forced", "mechanism"]
 
 
 class ItemTaken(Event):
@@ -124,6 +142,29 @@ class BodySearched(Event):
     type: Literal["body_searched"] = "body_searched"
     target_id: str
     item_ids: list[str]
+
+
+class Healed(Event):
+    type: Literal["healed"] = "healed"
+    target_id: str
+    rolls: list[int]
+    modifier: int
+    amount: int  # what was actually regained: never past maximum hit points
+
+
+class ItemUsed(Event):
+    type: Literal["item_used"] = "item_used"
+    item_id: str
+    name: str  # for the narrator: a used-up item is no longer in the scene
+    used_up: bool
+
+
+class HazardSprung(Event):
+    """A trap or hazard goes off; the saving throws and damage follow as events."""
+
+    type: Literal["hazard_sprung"] = "hazard_sprung"
+    hazard_id: str
+    name: str  # for the narrator: an unnoticed hazard is not in the scene
 
 
 class QuestFlagSet(Event):

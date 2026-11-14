@@ -1,0 +1,36 @@
+# Scenario (M7): hazards. Loose rocks hidden above the corridor (noticed only by
+# a sharp eye or a search) and a spike pit in the hall that cannot be missed.
+id: trapped_corridor
+title: Trapped Corridor
+start_location: landing
+win_condition: {flag: got_idol}
+locations:
+  - id: landing
+    name: Stair Landing
+    description: Worn steps end at a narrow corridor running north.
+    exits: [{id: landing_to_corridor, to: corridor, direction: north}]
+  - id: corridor
+    name: Cracked Corridor
+    description: The ceiling here is cracked, and dust trickles from it.
+    exits:
+      - {id: corridor_to_landing, to: landing, direction: south}
+      - {id: corridor_to_hall, to: hall, direction: north}
+    hazards:
+      - id: falling_rocks
+        name: Falling Rocks
+        hidden: {dc: 15}
+        save: {ability: DEX, dc: 15}
+        damage_dice: 1d4
+        damage_type: bludgeoning
+  - id: hall
+    name: Idol Hall
+    description: A stone idol stands beyond a pit lined with rusty spikes.
+    exits: [{id: hall_to_corridor, to: corridor, direction: south}]
+    hazards:
+      - id: spike_pit
+        name: Spike Pit
+        save: {ability: DEX, dc: 10}
+        damage_dice: 1d4
+        damage_type: piercing
+items:
+  - {id: idol, name: Stone Idol, location: hall, on_take: {set_flag: got_idol}}

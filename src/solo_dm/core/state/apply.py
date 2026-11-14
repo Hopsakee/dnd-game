@@ -15,8 +15,12 @@ from solo_dm.core.state.events import (
     DamageDealt,
     DoorUnlocked,
     Event,
+    GuardianRescued,
+    HazardSprung,
+    Healed,
     HiddenFound,
     ItemTaken,
+    ItemUsed,
     LocationDiscovered,
     MovedTo,
     QuestFlagSet,
@@ -29,6 +33,11 @@ def apply_event(state: GameState, event: Event) -> GameState:
     match event:
         case DamageDealt(target_id=target_id, amount=amount):
             return _update_combatant(state, target_id, hp=max(0, hp_of(state, target_id) - amount))
+        case GuardianRescued(target_id=target_id):
+            state = _update_combatant(state, target_id, hp=state.party[target_id].max_hp)
+            return state.model_copy(update={"rescues_left": state.rescues_left - 1})
+        case Healed(target_id=target_id, amount=amount):
+            return _update_combatant(state, target_id, hp=hp_of(state, target_id) + amount)
         case CreatureDied(target_id=target_id):
             return _update_combatant(state, target_id, alive=False)
         case CharacterDefeated(target_id=target_id):
@@ -69,6 +78,11 @@ def apply_event(state: GameState, event: Event) -> GameState:
             carried = {i: c for i, c in state.items_carried.items() if i not in item_ids}
             floor = {**state.items_on_floor, **{i: where for i in item_ids}}
             return state.model_copy(update={"items_carried": carried, "items_on_floor": floor})
+        case ItemUsed(actor_id=actor_id, item_id=item_id, used_up=True):
+            kept = tuple(i for i in state.party[actor_id].inventory if i != item_id)
+            return _update_combatant(state, actor_id, inventory=kept)
+        case HazardSprung(hazard_id=hazard_id):
+            return state.model_copy(update={"sprung_hazards": (*state.sprung_hazards, hazard_id)})
         case QuestFlagSet(flag=flag):
             return state.model_copy(update={"quest_flags": (*state.quest_flags, flag)})
         case AttitudeChanged(target_id=target_id, attitude=attitude):

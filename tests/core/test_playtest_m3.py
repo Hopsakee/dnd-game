@@ -54,13 +54,17 @@ def test_talking_in_combat_uses_your_turn():
     assert [a.actor_id for a in attacks] == ["goblin"]
 
 
-def test_a_missing_rule_is_said_plainly_without_the_narrator():
+def test_a_missing_rule_is_said_plainly_without_the_narrator(monkeypatch):
     # Flags 2 and 4: the narrator dressed "no rule yet" up as "you cannot".
-    llm = ScriptedLLM([{"action": "use_item"}])
-    turn = _session(llm).play_turn("hero", "use the iron key")
+    # Since M7 every action has a rule, so one is taken away for this test.
+    from solo_dm.core.turn import resolve
+
+    monkeypatch.delitem(resolve._ACTIONS, "talk")
+    llm = ScriptedLLM([{"action": "talk"}])
+    turn = _session(llm).play_turn("hero", "hello there")
     assert llm.narrated == []
     assert turn.narration == (
-        "The game has no rule for that yet (use_item), so nothing happened. "
+        "The game has no rule for that yet (talk), so nothing happened. "
         "Try saying it another way."
     )
 

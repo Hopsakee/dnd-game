@@ -215,3 +215,11 @@ def test_in_a_fight_the_heros_hit_points_stay_above_the_input(tmp_path, store):
         game.session.campaign_id).state.party["hero"].hp
     assert combat_bar(fight).startswith(f"Fighter {hp}/12 HP")
     assert combat_bar(client.get(url).text).startswith(f"Fighter {hp}/12 HP")
+
+
+def test_carried_items_get_a_use_button(tmp_path, store):
+    game, _ = open_game(store, adventure_id="scenarios/fountain_and_potion")
+    run(game, ["take potion", "quit"])
+    fragment = web(tmp_path).post(f"/play/{game.session.campaign_id}",
+                                  data={"line": "look"}, headers=HTMX).text
+    assert "use Potion of Healing" in fragment

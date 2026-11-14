@@ -9,6 +9,8 @@ from solo_dm.core.ports import DicePort
 from solo_dm.core.rules.rules_attacks import character_attack, resolve_attack
 from solo_dm.core.rules.rules_checks import ability_check
 from solo_dm.core.rules.rules_difficulty import fallback_dc
+from solo_dm.core.rules.rules_hazards import spring_hazards
+from solo_dm.core.rules.rules_healing import heal
 from solo_dm.core.state.apply import apply_events
 from solo_dm.core.state.events import (
     AdventureWon,
@@ -19,6 +21,7 @@ from solo_dm.core.state.events import (
     Event,
     HiddenFound,
     ItemTaken,
+    ItemUsed,
     LocationDiscovered,
     MovedTo,
     QuestFlagSet,
@@ -81,6 +84,9 @@ def _aftermath(before: GameState, after: GameState, dice: DicePort) -> list[Even
 def _move(state, adventure, actor_id, intent, dice) -> list[Event]:
     exit_ = _require_exit(adventure, intent)
     if exit_.id in state.locked_exits:
+        lock = adventure.lock(exit_.id)
+        if lock is not None and lock.stuck:
+            raise Blocked(f"The way {exit_.direction} is stuck; force it open.")
         raise Blocked(f"The way {exit_.direction} is locked.")
     events: list[Event] = []
     if state.in_combat:
@@ -88,7 +94,8 @@ def _move(state, adventure, actor_id, intent, dice) -> list[Event]:
     events.append(MovedTo(actor_id=actor_id, location_id=exit_.to))
     if exit_.to not in state.discovered_locations:
         events.append(LocationDiscovered(actor_id=actor_id, location_id=exit_.to))
-    return events + notice_on_entering(state, adventure, exit_.to)
+    events += notice_on_entering(state, adventure, exit_.to)
+    return events + spring_hazards(apply_events(state, events), adventure, exit_.to, dice)
 
 
 def _attack(state, adventure, actor_id, intent, dice) -> list[Event]:
@@ -127,6 +134,10 @@ def _unlock(state, adventure, actor_id, intent, dice) -> list[Event]:
     lock = adventure.lock(exit_.id)
     if lock is None or exit_.id not in state.locked_exits:
         raise Blocked("It is not locked.")
+    if lock.stuck:
+        raise Blocked("It is not locked but stuck; force it open.")
+    if lock.key is None and lock.pick_dc is None:
+        raise Blocked("There is no keyhole; something else must open it.")
     if lock.key is not None and lock.key in state.party[actor_id].inventory:
         return [DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="key")]
     if lock.pick_dc is None:
@@ -138,10 +149,17 @@ def _unlock(state, adventure, actor_id, intent, dice) -> list[Event]:
 
 
 def _open(state, adventure, actor_id, intent, dice) -> list[Event]:
+    """Opening a stuck door means forcing it: Strength (Athletics) vs its DC."""
     exit_ = _require_exit(adventure, intent)
-    if exit_.id in state.locked_exits:
+    if exit_.id not in state.locked_exits:
+        raise Blocked(f"The way {exit_.direction} is already open.")
+    lock = adventure.lock(exit_.id)
+    if lock is None or lock.force_dc is None:
         raise Blocked(f"The way {exit_.direction} is locked.")
-    raise Blocked(f"The way {exit_.direction} is already open.")
+    check = ability_check(state.party[actor_id], "STR", "athletics", lock.force_dc, dice)
+    if not check.success:
+        return [check]
+    return [check, DoorUnlocked(actor_id=actor_id, exit_id=exit_.id, method="forced")]
 
 
 # Still roll when nothing is hidden, so a search never gives away that a room is empty.
@@ -178,19 +196,45 @@ def _ability_check(state, adventure, actor_id, intent, dice) -> list[Event]:
     if intent.ability is None:
         raise Blocked("Which ability do you use for that?")
     creature = state.creatures.get(intent.target_id or "")
-    dc = fallback_dc(intent.task_category, creature.attitude if creature else None)
+    placed = adventure.entity(creature.creature_id) if creature else None
+    consequences = [c for c in (placed.checks if placed
+                                else adventure.location(state.party_location).checks)
+                    if c.ability == intent.ability and c.skill in (None, intent.skill)]
+    stated = next((c.dc for c in consequences if c.dc is not None), None)
+    dc = stated or fallback_dc(intent.task_category, creature.attitude if creature else None)
     check = ability_check(state.party[actor_id], intent.ability, intent.skill, dc, dice)
     if not check.success:
         return [check]
-    placed = adventure.entity(creature.creature_id) if creature else None
-    consequences = placed.checks if placed else adventure.location(state.party_location).checks
     events: list[Event] = [check]
     for consequence in consequences:
-        if consequence.ability == intent.ability and consequence.skill in (None, intent.skill):
-            flag = consequence.on_success.set_flag
-            events.append(QuestFlagSet(actor_id=actor_id, flag=flag))
-            if flag == adventure.win_condition.flag:
-                events.append(AdventureWon(actor_id=actor_id))
+        flag = consequence.on_success.set_flag
+        events.append(QuestFlagSet(actor_id=actor_id, flag=flag))
+        if flag == adventure.win_condition.flag:
+            events.append(AdventureWon(actor_id=actor_id))
+    return events
+
+
+def _use_item(state, adventure, actor_id, intent, dice) -> list[Event]:
+    """Using a carried item: what the location says it does here (M7)."""
+    if intent.item_id not in state.party[actor_id].inventory:
+        raise Blocked("You are not carrying that.")
+    item = adventure.item(intent.item_id)
+    if item.effect is not None:
+        return [ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=True),
+                heal(state.party[actor_id], item.effect.heal, dice)]
+    use = next((u for u in adventure.location(state.party_location).uses
+                if u.item == item.id), None)
+    if use is None:
+        raise Blocked(f"Nothing here to use the {item.name} on.")
+    events: list[Event] = [
+        ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=use.used_up),
+        QuestFlagSet(actor_id=actor_id, flag=use.set_flag),
+    ]
+    events += [DoorUnlocked(actor_id=actor_id, exit_id=lock.exit, method="mechanism")
+               for lock in adventure.locks
+               if lock.opens_on_flag == use.set_flag and lock.exit in state.locked_exits]
+    if use.set_flag == adventure.win_condition.flag:
+        events.append(AdventureWon(actor_id=actor_id))
     return events
 
 
@@ -226,5 +270,6 @@ _ACTIONS = {
     "look": _look,
     "talk": _talk,
     "search": _search,
+    "use_item": _use_item,
     "ability_check": _ability_check,
 }

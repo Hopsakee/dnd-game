@@ -51,13 +51,20 @@ def build_session(
     if store is not None and campaign_id is not None:
         return GameSession.resume(store, campaign_id, llm, dice, lore)
     catalog = YamlSrdCatalog(settings.paths.srd)
-    adventure = YamlAdventureSource(settings.paths.adventures).load(adventure_id)
+    source = adventure_source(settings)
+    adventure = source.load(adventure_id)
     hero = catalog.premade_character("fighter_level_1", character_id=SOLO_ACTOR, player_id="jelle")
-    bestiary = {e.srd_ref: catalog.stat_block(e.srd_ref) for e in adventure.entities}
+    own = source.stat_blocks(adventure_id)  # the book's own monsters before the SRD's
+    bestiary = {e.srd_ref: own.get(e.srd_ref) or catalog.stat_block(e.srd_ref)
+                for e in adventure.entities}
     state = initial_state(adventure, [hero], bestiary)
     if store is None:
         return GameSession(adventure, state, llm, dice, lore=lore)
     return GameSession.start_campaign(store, adventure, state, llm, dice, lore)
+
+
+def adventure_source(settings) -> YamlAdventureSource:
+    return YamlAdventureSource(settings.paths.adventures, *settings.paths.extra_adventures)
 
 
 def build_terminal_game(
@@ -106,7 +113,7 @@ def build_web_app(
         open_session=open_session,
         new_session=new_session,
         list_campaigns=lambda: SQLiteCampaignStore(path).list_campaigns(),
-        adventures=lambda: YamlAdventureSource(settings.paths.adventures).available(),
+        adventures=lambda: adventure_source(settings).available(),
         cost_report=lambda: CostLog(settings.paths.llm_call_log).report(),
         actor_id=SOLO_ACTOR,
         static=root / "static",

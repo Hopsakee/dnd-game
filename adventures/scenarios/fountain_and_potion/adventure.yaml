@@ -1,0 +1,31 @@
+# Scenario (M7): using items. A coin tossed into the fountain opens the doors
+# (and is gone), a potion heals, and a guardian spirit saves the hero once.
+id: fountain_and_potion
+title: Fountain and Potion
+start_location: fountain_room
+win_condition: {flag: got_crown}
+guardian: {name: Spirit of the Fountain, rescues: 1}
+locations:
+  - id: fountain_room
+    name: Fountain Room
+    description: A dry fountain carved with laughing faces. Words on its rim read "Toss your greed into the sea". Two doors to the north and east have no handles.
+    exits:
+      - {id: fountain_to_vault, to: vault, direction: north}
+      - {id: fountain_to_closet, to: closet, direction: east}
+    uses:
+      - {item: copper_coin, set_flag: fountain_paid, used_up: true}
+  - id: vault
+    name: Crown Vault
+    description: A small vault. A tin crown rests on a cushion.
+    exits: [{id: vault_to_fountain, to: fountain_room, direction: south}]
+  - id: closet
+    name: Closet
+    description: A narrow closet with an empty shelf.
+    exits: [{id: closet_to_fountain, to: fountain_room, direction: west}]
+items:
+  - {id: copper_coin, name: Copper Coin, location: fountain_room}
+  - {id: potion, name: Potion of Healing, location: fountain_room, effect: {heal: 2d4+2}}
+  - {id: tin_crown, name: Tin Crown, location: vault, on_take: {set_flag: got_crown}}
+locks:
+  - {exit: fountain_to_vault, opens_on_flag: fountain_paid}
+  - {exit: fountain_to_closet, opens_on_flag: fountain_paid}

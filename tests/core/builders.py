@@ -27,6 +27,7 @@ def fighter(character_id: str = "hero", hp: int = 12) -> Character:
         armor_class=17,
         proficiency_bonus=2,
         skill_proficiencies=("athletics", "perception"),
+        saving_throw_proficiencies=("STR", "CON"),
         weapons=(GREATSWORD,),
     )
 

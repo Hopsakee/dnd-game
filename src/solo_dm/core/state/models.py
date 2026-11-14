@@ -43,6 +43,7 @@ class Character(FrozenModel):
     armor: str | None = None  # what is worn, for the narrator; armor_class does the rules
     proficiency_bonus: int
     skill_proficiencies: tuple[str, ...] = ()
+    saving_throw_proficiencies: tuple[Ability, ...] = ()
     weapons: tuple[Weapon, ...] = ()
     inventory: tuple[str, ...] = ()
     conditions: tuple[str, ...] = ()
@@ -91,6 +92,9 @@ class GameState(FrozenModel):
     items_carried: dict[str, str] = {}  # item_id -> creature_id, until the body is searched
     hidden_unfound: tuple[str, ...] = ()  # ids of hidden items and exits not yet found
     locked_exits: tuple[str, ...] = ()
+    sprung_hazards: tuple[str, ...] = ()
+    guardian: str | None = None  # who rescues a hero at 0 HP, while rescues_left > 0
+    rescues_left: int = 0
     quest_flags: tuple[str, ...] = ()
 
 

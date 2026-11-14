@@ -1,0 +1,18 @@
+# Scenario (M7): a stuck door is forced open with Strength (Athletics) vs its DC.
+id: stuck_door
+title: Stuck Door
+start_location: passage
+win_condition: {flag: found_lantern}
+locations:
+  - id: passage
+    name: Swollen Passage
+    description: A damp passage. A wooden door to the north has swollen in its frame.
+    exits: [{id: passage_to_storeroom, to: storeroom, direction: north}]
+  - id: storeroom
+    name: Old Storeroom
+    description: Shelves of rotten sacks. A brass lantern hangs from a hook.
+    exits: [{id: storeroom_to_passage, to: passage, direction: south}]
+items:
+  - {id: lantern, name: Brass Lantern, location: storeroom, on_take: {set_flag: found_lantern}}
+locks:
+  - {exit: passage_to_storeroom, force_dc: 12}

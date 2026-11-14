@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 from rich.console import Console
 
-from solo_dm.core.turn.player_view import expand_shortcut, known_map
+from solo_dm.core.turn.player_view import exit_label, expand_shortcut, known_map
 from solo_dm.core.turn.session import GameSession
 from solo_dm.infrastructure.llm.cost_log import LLMUnavailable
 
@@ -113,7 +113,7 @@ class TerminalGame:
     def _look(self) -> str:
         scene = self.session.scene()
         exits = ", ".join(
-            f"{e.direction} ({e.leads_to or 'unexplored'}{', locked' if e.locked else ''})"
+            exit_label(e)
             for e in scene.exits
         )
         lines = [
@@ -126,6 +126,8 @@ class TerminalGame:
                 c.name + ("" if c.alive else " (dead)") for c in scene.creatures))
         if scene.items:
             lines.append("Items: " + ", ".join(i.name for i in scene.items))
+        if scene.hazards:
+            lines.append("Noticed: " + ", ".join(h.name for h in scene.hazards))
         if scene.nearby:
             lines.append("Nearby: " + "; ".join(f"{n.direction}: {n.senses}" for n in scene.nearby))
         return "\n".join(lines)

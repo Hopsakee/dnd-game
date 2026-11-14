@@ -6,6 +6,7 @@ import yaml
 from pydantic import BaseModel
 
 from solo_dm.core.state.models import (
+    Ability,
     AbilityScores,
     Attitude,
     Character,
@@ -25,6 +26,7 @@ class CharacterTemplate(BaseModel):
     armor: str | None = None
     proficiency_bonus: int
     skill_proficiencies: list[str]
+    saving_throw_proficiencies: list[Ability] = []
     weapons: list[str]
     inventory: list[str] = []
     not_implemented: list[str] = []
@@ -66,6 +68,7 @@ class YamlSrdCatalog:
             armor=template.armor,
             proficiency_bonus=template.proficiency_bonus,
             skill_proficiencies=tuple(template.skill_proficiencies),
+            saving_throw_proficiencies=tuple(template.saving_throw_proficiencies),
             weapons=tuple(weapons[w] for w in template.weapons),
             inventory=tuple(template.inventory),
         )

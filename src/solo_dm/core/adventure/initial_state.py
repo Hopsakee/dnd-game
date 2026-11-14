@@ -33,6 +33,8 @@ def initial_state(
             thing_id for loc in adventure.locations for thing_id, _ in adventure.hidden_in(loc.id)
         ),
         locked_exits=tuple(lock.exit for lock in adventure.locks if lock.locked),
+        guardian=adventure.guardian.name if adventure.guardian else None,
+        rescues_left=adventure.guardian.rescues if adventure.guardian else 0,
     )
     # The party looks around the start location too.
     return apply_events(state, notice_on_entering(state, adventure, adventure.start_location))

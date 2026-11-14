@@ -117,3 +117,21 @@ def test_adventure_check_flags_count_for_the_win_condition():
                    "checks": [{"ability": "CHA", "on_success": {"set_flag": "goblin_allied"}}]}],
     )
     assert adventure.win_condition.flag == "goblin_allied"
+
+
+def test_a_dc_the_adventure_gives_wins_over_the_task_category():
+    # M7: books state DCs ("DC 10 Acrobatics check to get on the platform").
+    from .adventure_fixture import ADVENTURE as BASE
+
+    shrine = {**BASE["locations"][2], "checks": [
+        {"ability": "DEX", "skill": "acrobatics", "dc": 10,
+         "on_success": {"set_flag": "got_amulet"}}]}
+    adventure = tiny_adventure(entities=[], locks=[],
+                               locations=[*BASE["locations"][:2], shrine])
+    state = initial_state(adventure, [fighter()], BESTIARY)
+    state = apply_events(state, resolve_intent(state, adventure, "hero", Intent(
+        action="move", target_id="hall_to_shrine"), FixedDice([])).events)
+    resolution = resolve_intent(state, adventure, "hero", _check(
+        ability="DEX", skill="acrobatics", task_category="hard"), FixedDice([8]))
+    check = resolution.events[0]
+    assert (check.dc, check.total, check.success) == (10, 10, True)  # 8 + DEX 2
