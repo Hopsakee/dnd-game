@@ -3,6 +3,8 @@ Undiscovered locations are named only by direction, and hidden items and exits
 the party has not found, and what a creature carries, are left out, so neither
 interpreter nor narrator can leak or target what the party has not seen."""
 
+from typing import Any
+
 from pydantic import BaseModel
 
 from solo_dm.core.adventure.schema import Adventure
@@ -64,6 +66,7 @@ class SceneChallenge(BaseModel):
 
     challenge_id: str
     goal: str
+    creature_id: str | None = None  # set when the attempt is aimed at a creature
 
 
 class SceneSense(BaseModel):
@@ -128,6 +131,17 @@ def scene_tags(scene: SceneContext, adventure: Adventure) -> list[str]:
     return list(dict.fromkeys(tags))
 
 
+def open_challenges(state: GameState, adventure: Adventure) -> list[tuple[str | None, Any]]:
+    """(creature id or None, check) of every challenge the party can attempt
+    here: the location's, and those of living creatures here, until done."""
+    here = [(None, c) for c in adventure.location(state.party_location).checks]
+    here += [(creature.creature_id, c)
+             for creature in state.creatures.values()
+             if creature.alive and creature.location == state.party_location
+             for c in adventure.entity(creature.creature_id).checks]
+    return [(who, c) for who, c in here if c.on_success.set_flag not in state.quest_flags]
+
+
 def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
     location = adventure.location(state.party_location)
     return SceneContext(
@@ -159,9 +173,8 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
             and h.id not in state.sprung_hazards
         ],
         challenges=[
-            SceneChallenge(challenge_id=c.id, goal=c.goal)
-            for c in location.checks
-            if c.id and c.goal and c.on_success.set_flag not in state.quest_flags
+            SceneChallenge(challenge_id=c.id, goal=c.goal, creature_id=creature_id)
+            for creature_id, c in open_challenges(state, adventure)
         ],
         creatures=[
             SceneCreature(

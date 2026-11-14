@@ -141,3 +141,25 @@ def test_the_replay_invariant_holds_for_losing_and_for_ability_checks(
     assert run(game, lines) == outcome
     stored = store.load(game.session.campaign_id)
     assert replayed(stored) == stored.state == game.session.state
+
+
+def test_a_campaign_stored_before_checks_needed_a_goal_still_resumes(tmp_path):
+    # Jelle's Azzinax campaign 3 froze a check without id and goal (2026-11-14).
+    import json
+    import sqlite3
+
+    store = SQLiteCampaignStore(tmp_path / "campaigns.db")
+    game, _ = open_game(store, adventure_id="scenarios/ability_check", seed=6)
+    run(game, ["go south", "quit"])
+    db = sqlite3.connect(tmp_path / "campaigns.db")
+    (copy,) = db.execute("select adventure_copy from campaigns").fetchone()
+    old = json.loads(copy)
+    for place in (*old["locations"], *old["entities"]):
+        for check in place["checks"]:
+            del check["id"], check["goal"]
+    db.execute("update campaigns set adventure_copy = ?", (json.dumps(old),))
+    db.commit()
+
+    resumed, _ = open_game(SQLiteCampaignStore(tmp_path / "campaigns.db"),
+                           game.session.campaign_id)
+    assert [t.player_input for t in resumed.session.turns] == ["go south"]

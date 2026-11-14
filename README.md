@@ -142,8 +142,11 @@ M7: what Revenge of Azzinax needs. Adventures can now have:
 
 After Jelle's phone play test of Azzinax:
 
-- `id` and `goal` on a check make it a challenge: the models see the goal, and
-  any attempt at it (climbing, cutting the ropes) rolls that check.
+- Every check is a challenge, with an `id` and a `goal`: the models see the
+  goal, and any attempt at it (climbing, cutting the ropes; bribing or lying
+  for a creature's) rolls that check. An adventure with a check without a goal
+  is refused at loading; a check aimed at no challenge changes nothing. Old
+  campaigns resume: their frozen copy gets a generic goal per check.
 - `activity` on an entity: what it is doing while not fighting, instead of in
   the room description; `group`: attack one, and the whole group fights.
 - `carried_by: party` on an item: the hero starts with it (his own purse).

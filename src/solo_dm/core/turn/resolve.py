@@ -35,7 +35,7 @@ from solo_dm.core.turn.combat import (
 )
 from solo_dm.core.turn.intent import Intent
 from solo_dm.core.turn.perception import notice_on_entering
-from solo_dm.core.turn.scene import GUARDIAN_ID, build_scene
+from solo_dm.core.turn.scene import GUARDIAN_ID, build_scene, open_challenges
 
 
 class Resolution(BaseModel):
@@ -203,33 +203,30 @@ def _search_room(state, adventure, actor_id, dice) -> list[Event]:
 
 
 def _ability_check(state, adventure, actor_id, intent, dice) -> list[Event]:
-    """The fallback (plan 3.7): Python sets the DC from the task category and the
-    target's attitude, rolls, and applies only consequences the adventure defines."""
-    here = adventure.location(state.party_location).checks
-    challenge = next((c for c in here if c.id and c.id == intent.target_id), None)
-    if challenge is not None:  # any attempt at the goal rolls the book's check
+    """The fallback (plan 3.7), and challenges. Aimed at a challenge here, any
+    attempt rolls the book's check for it and success sets its flag; otherwise
+    the roll changes nothing. Python sets a DC the book does not state, from the
+    task category and the attitude of the creature it is aimed at."""
+    challenge = next((c for who, c in open_challenges(state, adventure)
+                      if c.id == intent.target_id), None)
+    target = intent.target_id
+    if challenge is not None:
+        target = next(who for who, c in open_challenges(state, adventure) if c is challenge)
         intent = intent.model_copy(update={"ability": challenge.ability,
-                                           "skill": challenge.skill, "target_id": None})
+                                           "skill": challenge.skill})
     if intent.ability is None:
         raise Blocked("Which ability do you use for that?")
-    creature = state.creatures.get(intent.target_id or "")
-    placed = adventure.entity(creature.creature_id) if creature else None
-    consequences = [challenge] if challenge else [
-        c for c in (placed.checks if placed else here)
-        if c.ability == intent.ability and c.skill in (None, intent.skill)]
-    stated = next((c.dc for c in consequences if c.dc is not None), None)
-    dc = stated or fallback_dc(intent.task_category, creature.attitude if creature else None)
+    creature = state.creatures.get(target or "")
+    dc = (challenge.dc if challenge and challenge.dc
+          else fallback_dc(intent.task_category, creature.attitude if creature else None))
     check = ability_check(state.party[actor_id], intent.ability, intent.skill, dc, dice)
-    if not check.success:
+    if not check.success or challenge is None:
         return [check]
-    events: list[Event] = [check]
-    for consequence in consequences:
-        flag = consequence.on_success.set_flag
-        events.append(QuestFlagSet(actor_id=actor_id, flag=flag))
-        if flag == adventure.win_condition.flag:
-            events.append(AdventureWon(actor_id=actor_id))
+    flag = challenge.on_success.set_flag
+    events: list[Event] = [check, QuestFlagSet(actor_id=actor_id, flag=flag)]
+    if flag == adventure.win_condition.flag:
+        events.append(AdventureWon(actor_id=actor_id))
     return events
-
 
 def _use_item(state, adventure, actor_id, intent, dice) -> list[Event]:
     """Using a carried item: what the location says it does here (M7)."""

@@ -347,3 +347,14 @@ def test_the_narrator_keeps_to_what_it_said_before(llm):  # flag 25
         action="attack", target_id=goblin.creature_id, approach="swing the greatsword"))
     text = llm.narrate(outcome, scene).lower()
     assert "sharpen" not in text and "sits" not in text
+
+
+@pytest.mark.parametrize("text", [
+    "I offer the gatekeeper a coin to let me through",
+    "I tell the goblin the chief sent me and he has to open the gate",
+    "persuade the gatekeeper",
+])
+def test_any_attempt_at_a_creatures_challenge_targets_the_challenge(llm, text):
+    session = _scenario(llm, "scenarios/ability_check")
+    intent = _intent(llm, session, text)
+    assert (intent.action, intent.target_id) == ("ability_check", "get_past_gatekeeper")
