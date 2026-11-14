@@ -5,3 +5,4 @@ campaigns/
 __pycache__/
 *.pyc
 logs/
+.sesskey

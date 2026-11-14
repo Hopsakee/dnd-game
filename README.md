@@ -82,6 +82,30 @@ only colours interpretation and narration; it never changes what happens. Items
 in an adventure may have a `description`, which the narrator follows instead of
 inventing properties.
 
+M6: the web app, for playing from a phone. The same campaigns as the terminal:
+a game started in one resumes in the other.
+
+```bash
+uv run solo-dm web                        # http://127.0.0.1:5001
+uv run solo-dm web --port 8080
+```
+
+Home offers to continue the latest campaign; Campaigns lists them all and starts
+a new game. In a campaign: Play (the story, a box with the room, buttons for
+what can be done here and an input line that takes the same shortcuts and
+commands as the terminal), Character, Inventory and Map (the discovered rooms,
+yours highlighted). Cost shows the model spend.
+
+It listens on 127.0.0.1 only. To reach it from the phone, publish it on the
+tailnet from the machine it runs on: `tailscale serve --bg 5001`, then open the
+https address that prints. Tailscale is the only gate: the app has no login.
+
+The app is built with `FastHTML()` and serves only `static/`. htmx 2.0.7 and
+fasthtml.js 1.0.12 are vendored in `static/vendor/`, so pages load nothing from
+a CDN; upgrading htmx means replacing that file. Not `fast_app()`: it adds a
+route that serves any `.yaml`, `.txt` and similar file under the working
+directory, `..` included.
+
 ## Commands
 
 ```bash

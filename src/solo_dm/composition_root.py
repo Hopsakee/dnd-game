@@ -28,11 +28,36 @@ from solo_dm.infrastructure.persistence.sqlite_campaign_store import (
 from solo_dm.infrastructure.settings import anthropic_connection, load_settings
 from solo_dm.infrastructure.srd.yaml_srd_catalog import YamlSrdCatalog
 from solo_dm.infrastructure.terminal.terminal_game import TerminalGame
+from solo_dm.infrastructure.web.app import WebServices, create_web_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOLO_ACTOR = "hero"
-NOT_BUILT_YET = {"web": "M6 (web app)"}
 CAMPAIGN_FILE = "campaigns.db"
+
+
+def build_session(
+    adventure_id: str,
+    dice: DicePort,
+    llm: LLMPort,
+    root: Path = PROJECT_ROOT,
+    store: CampaignStorePort | None = None,
+    campaign_id: int | None = None,
+) -> GameSession:
+    """A new game of adventure_id, stored as a new campaign when a store is given;
+    or, with campaign_id, that campaign resumed from the store. The terminal and
+    the web app both start their games here."""
+    settings = load_settings(root)
+    lore = FtsLoreIndex(settings.paths.lore)
+    if store is not None and campaign_id is not None:
+        return GameSession.resume(store, campaign_id, llm, dice, lore)
+    catalog = YamlSrdCatalog(settings.paths.srd)
+    adventure = YamlAdventureSource(settings.paths.adventures).load(adventure_id)
+    hero = catalog.premade_character("fighter_level_1", character_id=SOLO_ACTOR, player_id="jelle")
+    bestiary = {e.srd_ref: catalog.stat_block(e.srd_ref) for e in adventure.entities}
+    state = initial_state(adventure, [hero], bestiary)
+    if store is None:
+        return GameSession(adventure, state, llm, dice, lore=lore)
+    return GameSession.start_campaign(store, adventure, state, llm, dice, lore)
 
 
 def build_terminal_game(
@@ -45,23 +70,47 @@ def build_terminal_game(
     store: CampaignStorePort | None = None,
     campaign_id: int | None = None,
 ) -> TerminalGame:
-    """A new game of adventure_id, stored as a new campaign when a store is given;
-    or, with campaign_id, that campaign resumed from the store."""
-    settings = load_settings(root)
-    lore = FtsLoreIndex(settings.paths.lore)
-    if store is not None and campaign_id is not None:
-        session = GameSession.resume(store, campaign_id, llm, dice, lore)
-        return TerminalGame(session, SOLO_ACTOR, console, spend)
-    catalog = YamlSrdCatalog(settings.paths.srd)
-    adventure = YamlAdventureSource(settings.paths.adventures).load(adventure_id)
-    hero = catalog.premade_character("fighter_level_1", character_id=SOLO_ACTOR, player_id="jelle")
-    bestiary = {e.srd_ref: catalog.stat_block(e.srd_ref) for e in adventure.entities}
-    state = initial_state(adventure, [hero], bestiary)
-    if store is None:
-        session = GameSession(adventure, state, llm, dice, lore=lore)
-    else:
-        session = GameSession.start_campaign(store, adventure, state, llm, dice, lore)
+    session = build_session(adventure_id, dice, llm, root, store, campaign_id)
     return TerminalGame(session, SOLO_ACTOR, console, spend)
+
+
+def build_web_app(
+    root: Path = PROJECT_ROOT,
+    campaigns: Path | None = None,
+    llm: Callable[[int | None], LLMPort] | None = None,
+    seed: int | None = None,
+):
+    """The web app over the campaign store at `campaigns` (default: the one the
+    terminal uses). llm gives the model for a campaign id (None: a new one); without
+    it the model is the one settings.yaml names. seed fixes the dice."""
+    llm = llm or _web_llm(root)
+    settings = load_settings(root)
+    path = campaigns or settings.paths.campaigns / CAMPAIGN_FILE
+
+    def dice() -> DicePort:
+        return SeededDice(seed) if seed is not None else RandomDice()
+
+    def open_session(campaign_id: int) -> GameSession:
+        store = SQLiteCampaignStore(path)  # one per request: sqlite3 connections stay
+        store.load(campaign_id)            # in their thread; unknown ids fail here
+        return build_session("", dice(), llm(campaign_id), root, store, campaign_id)
+
+    def new_session(adventure_id: str) -> GameSession:
+        model = llm(None)
+        session = build_session(adventure_id, dice(), model, root, SQLiteCampaignStore(path))
+        if isinstance(model, AnthropicLLM):
+            model.campaign = f"campaign {session.campaign_id}"
+        return session
+
+    return create_web_app(WebServices(
+        open_session=open_session,
+        new_session=new_session,
+        list_campaigns=lambda: SQLiteCampaignStore(path).list_campaigns(),
+        adventures=lambda: YamlAdventureSource(settings.paths.adventures).available(),
+        cost_report=lambda: CostLog(settings.paths.llm_call_log).report(),
+        actor_id=SOLO_ACTOR,
+        static=root / "static",
+    ))
 
 
 def main(argv: list[str] | None = None, root: Path = PROJECT_ROOT) -> int:
@@ -82,16 +131,20 @@ def main(argv: list[str] | None = None, root: Path = PROJECT_ROOT) -> int:
     turns.add_argument("--fallback", action="store_true", help="only ability-check fallbacks")
     turns.add_argument("--rejected", action="store_true", help="only rejected intents")
     commands.add_parser("cost", help="print model spend per day and per campaign")
-    commands.add_parser("web", help="serve the web app")
+    web = commands.add_parser("web", help="serve the web app (FastHTML + htmx)")
+    web.add_argument("--host", default="127.0.0.1",
+                     help="address to listen on (default: this machine only)")
+    web.add_argument("--port", type=int, default=5001)
     args = parser.parse_args(argv)
     if args.command == "cost":
         settings = load_settings(root)
         print(CostLog(settings.paths.llm_call_log).report())
         return 0
     if args.command == "web":
-        print(f"solo-dm {args.command}: not built yet, arrives in {NOT_BUILT_YET[args.command]}",
-              file=sys.stderr)
-        return 2
+        import uvicorn
+
+        uvicorn.run(build_web_app(root), host=args.host, port=args.port)
+        return 0
     try:
         return {"play": _play, "campaigns": _campaigns, "rewind": _rewind,
                 "turns": _turns}[args.command](args, root)
@@ -173,3 +226,17 @@ def _choose_llm(args, root: Path, console: Console) -> tuple[LLMPort, Callable[[
     console.print(f"[dim](model: {settings.llm.model_for('narrator')}; "
                   "type 'cost' for this session's spend)[/dim]")
     return llm, lambda: llm.spent_usd
+
+
+def _web_llm(root: Path) -> Callable[[int | None], LLMPort]:
+    settings = load_settings(root)
+    if settings.llm.provider == "fake":
+        return lambda campaign_id: FakeLLM()
+    connection = anthropic_connection(settings, os.environ)
+
+    def llm(campaign_id: int | None) -> LLMPort:
+        log = CostLog(settings.paths.llm_call_log, settings.cost.daily_cap_usd)
+        label = f"campaign {campaign_id}" if campaign_id is not None else ""
+        return AnthropicLLM(make_anthropic_client(connection), settings.llm, log, campaign=label)
+
+    return llm

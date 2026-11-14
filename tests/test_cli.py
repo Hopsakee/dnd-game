@@ -12,9 +12,16 @@ def test_help_lists_the_commands(capsys):
         assert command in out
 
 
-def test_commands_not_built_yet_say_which_milestone_brings_them(capsys):
-    assert main(["web"]) == 2
-    assert "M6" in capsys.readouterr().err
+def test_web_serves_on_this_machine_only_unless_given_a_host(monkeypatch):
+    # Tailscale is the perimeter (plan 5.2): `tailscale serve` forwards to
+    # 127.0.0.1, so the app itself listens on no other address by default.
+    import uvicorn
+
+    served = []
+    monkeypatch.setattr(uvicorn, "run", lambda app, host, port: served.append((host, port)))
+    assert main(["web"]) == 0
+    assert main(["web", "--host", "0.0.0.0", "--port", "8080"]) == 0
+    assert served == [("127.0.0.1", 5001), ("0.0.0.0", 8080)]
 
 
 def test_cost_prints_spend_per_day_and_per_campaign(tmp_path, capsys):
