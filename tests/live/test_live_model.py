@@ -231,6 +231,37 @@ def test_using_a_carried_item_is_use_item(llm, text, item):
     assert (intent.action, intent.item_id) == ("use_item", item)
 
 
+TAKE_PURSE = [{"action": "take", "target_id": "worn_purse"}]
+
+
+@pytest.mark.parametrize("text", [
+    "I toss a silver piece into the wishing well",
+    "pay the well a coin",
+])
+def test_paying_money_is_use_item_with_the_coins(llm, text):  # Azzinax flag 19
+    session = _scenario(llm, "scenarios/coin_purse", TAKE_PURSE)
+    intent = _intent(llm, session, text)
+    assert (intent.action, intent.item_id) == ("use_item", "coins")
+
+
+def test_one_coin_paid_is_told_as_one_coin(llm):  # Azzinax flag 19
+    session = _scenario(llm, "scenarios/coin_purse", TAKE_PURSE)
+    record = session.play_turn(SOLO_ACTOR, "I toss a coin into the wishing well")
+    assert [e.type for e in record.events][:1] == ["coins_spent"]
+    assert "eight" not in record.narration.lower() and "8" not in record.narration
+
+
+@pytest.mark.parametrize("text", [
+    "I draw the warhammer",
+    "I switch to the bejewelled warhammer and fight with that",
+])
+def test_taking_another_weapon_in_hand_is_wield(llm, text):  # Azzinax flag 21
+    session = _scenario(llm, "scenarios/cursed_hammer",
+                        [{"action": "take", "target_id": "cursed_warhammer"}])
+    intent = _intent(llm, session, text)
+    assert (intent.action, intent.item_id) == ("wield", "cursed_warhammer")
+
+
 def test_a_sprung_trap_is_told_without_mechanics(llm):
     from solo_dm.core.state.events import DamageDealt, HazardSprung, SavingThrowRolled
 

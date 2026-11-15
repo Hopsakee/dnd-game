@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from solo_dm.core.state.models import Ability, Attitude
+from solo_dm.core.state.models import Ability, Attitude, Coins, Weapon
 
 
 class Event(BaseModel):
@@ -54,6 +54,7 @@ class DamageDealt(Event):
     modifier: int
     amount: int
     damage_type: str
+    penalty_rolls: list[int] = []  # subtracted: a cursed weapon's dice
 
 
 class CreatureDied(Event):
@@ -128,6 +129,13 @@ class DoorUnlocked(Event):
 class ItemTaken(Event):
     type: Literal["item_taken"] = "item_taken"
     item_id: str
+    weapon: Weapon | None = None  # a found weapon joins the weapons, not the pack
+
+
+class WeaponWielded(Event):
+    type: Literal["weapon_wielded"] = "weapon_wielded"
+    weapon_id: str
+    name: str
 
 
 class HiddenFound(Event):
@@ -136,6 +144,20 @@ class HiddenFound(Event):
     type: Literal["hidden_found"] = "hidden_found"
     target_id: str
     method: Literal["passive", "search"]
+
+
+class CoinsTaken(Event):
+    """Money picked up: its coins go into the purse, the item is gone."""
+
+    type: Literal["coins_taken"] = "coins_taken"
+    item_id: str
+    name: str
+    coins: Coins
+
+
+class CoinsSpent(Event):
+    type: Literal["coins_spent"] = "coins_spent"
+    coins: Coins
 
 
 class BodySearched(Event):

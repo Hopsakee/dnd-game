@@ -6,7 +6,7 @@ from typing import Any
 
 from solo_dm.core.ports import LLMPort
 from solo_dm.core.turn.outcome import TurnOutcome
-from solo_dm.core.turn.scene import SceneContext
+from solo_dm.core.turn.scene import COINS_ID, SceneContext
 
 # Checked in order, and each entry is a regex: "take" comes before "unlock" so
 # that "pick up the key" is not read as "pick the lock", and "use ... key" means
@@ -14,7 +14,8 @@ from solo_dm.core.turn.scene import SceneContext
 VERBS = [
     ("take", ["take", "grab", "get", "pick up"]),
     ("unlock", ["unlock", "pick the lock", "pick lock", "pick", r"use\b.*\bkey"]),
-    ("use_item", ["use", "drink", "quaff", "toss", "throw"]),
+    ("wield", ["wield", "draw", "switch to", "equip", "ready"]),
+    ("use_item", ["use", "drink", "quaff", "toss", "throw", "pay", "spend"]),
     ("attack", ["attack", "hit", "fight", "kill", "strike", "stab"]),
     ("open", ["open", "force", "break", "kick", "shove"]),  # a stuck door is forced open
     ("search", ["search", "loot", "frisk", "rummage"]),
@@ -22,6 +23,7 @@ VERBS = [
     ("move", ["go", "move", "walk", "head", "run", "enter", "north", "south", "east", "west"]),
 ]
 STOPWORDS = {"the", "a", "an", "to", "at", "of"}
+MONEY = {"coin", "coins", "money", "silver", "gold", "copper", "pay"}
 # Actions with no rule of their own become an ability check (plan 3.7): the
 # interpreter picks ability, skill and task category; Python sets the DC.
 CHECKS = [
@@ -50,7 +52,7 @@ class FakeLLM(LLMPort):
             intent |= {"action": action, "ability": check[1], "skill": check[2],
                        "task_category": "medium"}
         target = _target(action, words, scene)
-        if target and action == "use_item":
+        if target and action in ("use_item", "wield"):
             intent["item_id"] = target
         elif target:
             intent["target_id"] = target
@@ -98,9 +100,14 @@ def _target(action: str, words: set[str], scene: SceneContext) -> str | None:
     elif action == "talk":
         found = [c.creature_id for c in scene.creatures if _matches(words, c.creature_id, c.name)]
         found += [c.companion_id for c in scene.companions if _matches(words, c.name)]
+    elif action == "wield":
+        found = [w.weapon_id for m in scene.party for w in m.weapons
+                 if _matches(words, w.weapon_id, w.name)]
     elif action == "use_item":
+        held = [i.item_id for m in scene.party for i in m.inventory]
         found = [i.item_id for m in scene.party for i in m.inventory
-                 if _matches(words, i.item_id, i.name)]
+                 if i.item_id != COINS_ID and _matches(words, i.item_id, i.name)]
+        found += [COINS_ID] if words & MONEY and COINS_ID in held else []
     elif action == "take":
         found = [i.item_id for i in scene.items if _matches(words, i.item_id, i.name)]
     else:
@@ -114,6 +121,7 @@ def _names(scene: SceneContext) -> dict[str, str]:
     names |= {i.item_id: i.name for i in scene.items}
     names |= {i.item_id: i.name for m in scene.party for i in m.inventory}
     names |= {h.hazard_id: h.name for h in scene.hazards}
+    names |= {w.weapon_id: w.name for m in scene.party for w in m.weapons}
     return names
 
 
@@ -172,6 +180,12 @@ def _describe(event, names: dict[str, str], scene: SceneContext) -> str:
             if not event.item_ids:
                 return f"You find nothing on the {body}."
             return f"On the {body} you find: " + ", ".join(names[i] for i in event.item_ids) + "."
+        case "coins_taken":
+            return f"{actor} pockets the {event.name}: {event.coins}."
+        case "coins_spent":
+            return f"{actor} spends {event.coins}."
+        case "weapon_wielded":
+            return f"{actor} takes the {event.name} in hand."
         case "item_taken":
             return f"{actor} takes the {names[event.item_id]}."
         case "adventure_won":

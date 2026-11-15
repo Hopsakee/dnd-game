@@ -13,6 +13,7 @@ from solo_dm.core.state.models import GameState
 from solo_dm.core.turn.combat import active_combatant
 
 GUARDIAN_ID = "guardian"  # the guardian's id in the scene, to talk to
+COINS_ID = "coins"  # a party member's money, shown in the pack as one thing
 
 
 class SceneExit(BaseModel):
@@ -21,6 +22,7 @@ class SceneExit(BaseModel):
     leads_to: str | None  # location name once discovered
     locked: bool
     stuck: bool = False  # closed but not locked: forced open, not unlocked (M7)
+    door: bool = False
 
 
 class SceneCreature(BaseModel):
@@ -42,6 +44,13 @@ class SceneItem(BaseModel):
         return cls(item_id=item_id, name=item.name, description=item.description)
 
 
+class SceneWeapon(BaseModel):
+    weapon_id: str
+    name: str
+    stats: str
+    wielded: bool  # in hand: attacks use it
+
+
 class ScenePartyMember(BaseModel):
     character_id: str
     name: str
@@ -50,7 +59,7 @@ class ScenePartyMember(BaseModel):
     defeated: bool
     armor_class: int
     armor: str | None
-    weapons: list[str]
+    weapons: list[SceneWeapon]
     inventory: list[SceneItem]
 
 
@@ -111,6 +120,7 @@ class SceneContext(BaseModel):
 
     def valid_ids(self) -> set[str]:
         held = {i.item_id for m in self.party for i in m.inventory}
+        held |= {w.weapon_id for m in self.party for w in m.weapons}
         return (
             {e.exit_id for e in self.exits}
             | {c.creature_id for c in self.creatures}
@@ -157,6 +167,7 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
                 else None,
                 locked=e.id in state.locked_exits and not _stuck(adventure, e.id),
                 stuck=e.id in state.locked_exits and _stuck(adventure, e.id),
+                door=e.door,
             )
             for e in location.exits
             if e.id not in state.hidden_unfound
@@ -201,8 +212,11 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
                 defeated=m.defeated,
                 armor_class=m.armor_class,
                 armor=m.armor,
-                weapons=[w.name for w in m.weapons],
-                inventory=[SceneItem.of(adventure, i) for i in m.inventory],
+                weapons=[SceneWeapon(weapon_id=w.weapon_id, name=w.name, stats=w.stats(),
+                                     wielded=w == m.weapon_in_hand()) for w in m.weapons],
+                inventory=[SceneItem.of(adventure, i) for i in m.inventory]
+                + ([SceneItem(item_id=COINS_ID, name=f"Coins ({m.coins})")]
+                   if m.coins.count() else []),
             )
             for m in state.party.values()
         ],

@@ -12,7 +12,7 @@ import json
 import secrets
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from fasthtml.common import (
@@ -46,16 +46,17 @@ from fasthtml.common import (
     Ul,
 )
 from starlette.requests import Request
-from starlette.responses import RedirectResponse, Response
+from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.staticfiles import StaticFiles
 
 from solo_dm.core.ports import CampaignSummary
-from solo_dm.core.turn.player_view import exit_label, expand_shortcut
+from solo_dm.core.turn.player_view import exit_label, expand_shortcut, revealed_map
 from solo_dm.core.turn.scene import SceneContext
 from solo_dm.core.turn.session import GameSession, TurnRecord
+from solo_dm.infrastructure.adventures.yaml_adventure_source import PlayerMapFile
 from solo_dm.infrastructure.llm.cost_log import LLMUnavailable
 from solo_dm.infrastructure.persistence.sqlite_campaign_store import UnknownCampaign
-from solo_dm.infrastructure.web.map_svg import map_svg
+from solo_dm.infrastructure.web.map_svg import map_svg, player_map_svg
 
 HELP = (
     "Type what you do, or tap a button. Shortcuts: a = attack, n/s/e/w = go north, "
@@ -78,6 +79,8 @@ class WebServices:
     cost_report: Callable[[], str]
     actor_id: str
     static: Path
+    # The book's player map of an adventure, by its id (after M7); None: none.
+    player_map: Callable[[str], PlayerMapFile | None] = field(default=lambda _: None)
 
 
 def create_web_app(services: WebServices) -> FastHTML:
@@ -193,7 +196,15 @@ def create_web_app(services: WebServices) -> FastHTML:
         if session is None:
             return not_found(campaign_id)
         return page("Map", campaign_nav(campaign_id, "map"),
-                    Div(map_svg(session.state, session.adventure), cls="map"))
+                    map_panel(session, services, campaign_id))
+
+    @app.get("/map-image/{campaign_id}")
+    def map_image(campaign_id: int):
+        session = session_or_404(campaign_id)
+        found = services.player_map(session.adventure.id) if session else None
+        if found is None:
+            return Response("No map image.", status_code=404)
+        return FileResponse(found.image, media_type="image/png")
 
     @app.get("/cost")
     def cost():
@@ -229,7 +240,7 @@ def handle_line(session: GameSession, services: WebServices, line: str) -> list:
         "inventory": lambda: inventory_view(scene),
         "i": lambda: inventory_view(scene),
         "hp": lambda: P(", ".join(f"{m.name}: {m.hp}/{m.max_hp} HP" for m in scene.party)),
-        "map": lambda: Div(map_svg(session.state, session.adventure), cls="map"),
+        "map": lambda: map_panel(session, services, session.campaign_id),
         "save": lambda: P("Saved: the game is stored after every turn."),
         "quit": lambda: P("The game is stored after every turn; just close the page."),
         "cost": lambda: Pre(services.cost_report()),
@@ -256,6 +267,21 @@ def handle_line(session: GameSession, services: WebServices, line: str) -> list:
     if session.state.outcome != "playing":
         entries.append(P(outcome_text(session.state.outcome), cls="outcome"))
     return entries
+
+
+def map_panel(session: GameSession, services: WebServices, campaign_id: int | None):
+    """The book's player map where the party has been, with the node map folded
+    under it; only the node map when the adventure has no player map."""
+    node = Div(map_svg(session.state, session.adventure), cls="map")
+    found = services.player_map(session.adventure.id) if campaign_id is not None else None
+    seen = revealed_map(session.state, found.map) if found else None
+    if seen is None:
+        return node
+    parts = [Div(player_map_svg(seen, f"/map-image/{campaign_id}", found.size),
+                 cls="map book-map")]
+    if not seen.here:
+        parts.append(P("You are off the map.", cls="muted"))
+    return Div(*parts, Details(Summary("Schematic map"), node))
 
 
 def turn_entry(record: TurnRecord):
@@ -304,6 +330,7 @@ def quick_actions(scene: SceneContext) -> list[str]:
     actions += [f"search {c.name}" for c in scene.creatures if not c.alive]
     actions += [f"take {i.name}" for i in scene.items]
     actions += [f"use {i.name}" for m in scene.party for i in m.inventory]
+    actions += [f"wield {w.name}" for m in scene.party for w in m.weapons if not w.wielded]
     return actions + ["search", "look", "inv", "hp", "map"]
 
 
@@ -350,7 +377,8 @@ def inventory_view(scene: SceneContext):
     for m in scene.party:
         rows = [Li(f"Wears: {m.armor} (AC {m.armor_class})" if m.armor
                    else f"AC {m.armor_class}, no armour")]
-        rows += [Li(f"Wields: {w}") for w in m.weapons]
+        rows += [Li(f"{'Wields' if w.wielded else 'Carries'}: {w.name} ({w.stats})")
+                 for w in sorted(m.weapons, key=lambda w: not w.wielded)]
         pack = [Li(i.name, P(i.description, cls="muted") if i.description else "")
                 for i in m.inventory]
         blocks.append(Div(H2(m.name), Ul(*rows), P("Pack:"),
@@ -364,7 +392,8 @@ def character_sheet(c):
         Tr(*[Td(f"{getattr(c.abilities, a)} ({_signed(c.abilities.modifier(a))})")
              for a in ("STR", "DEX", "CON", "INT", "WIS", "CHA")]),
         cls="abilities")
-    weapons = [Li(f"{w.name}: {w.damage_dice} {w.damage_type} ({w.ability})")
+    in_hand = c.weapon_in_hand()
+    weapons = [Li(f"{w.name}: {w.stats()} ({w.ability})" + (", in hand" if w == in_hand else ""))
                for w in c.weapons]
     skills = ", ".join(s.replace("_", " ") for s in c.skill_proficiencies) or "none"
     return Div(

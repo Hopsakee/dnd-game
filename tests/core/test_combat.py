@@ -28,7 +28,7 @@ def test_initiative_orders_combatants_and_creatures_before_the_party_act_first()
 
 
 def _hero_attacks(state, target_id, dice):
-    attack = character_attack(state.party["hero"], "greatsword")
+    attack = character_attack(state.party["hero"])
     return resolve_attack(state, "hero", target_id, attack, dice)
 
 

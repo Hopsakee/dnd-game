@@ -89,7 +89,7 @@ def test_low_confidence_asks_back_in_words_built_from_the_scene():
 def test_the_scene_tells_the_model_what_the_party_wears_and_wields():
     # Flag 5: "No reason why I can't know what I am wearing."
     (member,) = _session(ScriptedLLM([])).scene().party
-    assert member.weapons == ["Greatsword"]
+    assert [w.name for w in member.weapons if w.wielded] == ["Greatsword"]
     assert member.armor_class == 17
 
 

@@ -35,7 +35,7 @@ def test_checks_and_attacks_work_for_any_party_member():
     state = state_with(fighter("ally"), fighter("hero"), creatures=[goblin()])
     check = ability_check(state.party["ally"], "STR", "athletics", 12, FixedDice([7]))
     assert (check.actor_id, check.success) == ("ally", True)
-    attack = character_attack(state.party["ally"], "greatsword")
+    attack = character_attack(state.party["ally"])
     events = resolve_attack(state, "ally", "goblin", attack, FixedDice([12, 2, 2]))
     assert apply_events(state, events).creatures["goblin"].hp == 3
 
@@ -52,7 +52,7 @@ def test_seeded_battles_of_two_against_two_always_end_with_one_side_down():
                 break
             actor = active_combatant(state)
             target = next(c.creature_id for c in state.creatures.values() if c.alive)
-            attack = character_attack(state.party[actor], "greatsword")
+            attack = character_attack(state.party[actor])
             state = apply_events(state, resolve_attack(state, actor, target, attack, dice))
             state = apply_events(state, end_party_turn(state, dice))
         party_down = all(m.defeated for m in state.party.values())

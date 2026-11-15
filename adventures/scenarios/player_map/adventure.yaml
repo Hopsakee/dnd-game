@@ -1,0 +1,24 @@
+# Scenario (after M7): the player map. map.yaml next to this file names the map
+# image and the cells of each location; the web app shows the image only where
+# the party has been (Azzinax flag 22).
+id: player_map
+title: Player Map
+start_location: hall
+win_condition: {flag: got_goblet}
+locations:
+  - id: hall
+    name: Square Hall
+    description: A bare hall. A wooden door leads east.
+    exits: [{id: hall_a, to: passage, direction: east, door: true}]
+  - id: passage
+    name: Short Passage
+    description: A short passage runs east from a door to an open room.
+    exits:
+      - {id: passage_a, to: hall, direction: west, door: true}
+      - {id: passage_b, to: vault, direction: east}
+  - id: vault
+    name: Vault
+    description: A small vault. A pewter goblet stands in a niche.
+    exits: [{id: vault_a, to: passage, direction: west}]
+items:
+  - {id: goblet, name: Pewter Goblet, location: vault, on_take: {set_flag: got_goblet}}

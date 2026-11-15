@@ -36,3 +36,21 @@ def test_initial_state_places_party_creatures_items_and_locks():
     assert state.items_on_floor == {"iron_key": "den", "amulet": "shrine"}
     assert state.locked_exits == ("hall_to_shrine",)
     assert (state.quest_flags, state.outcome) == ((), "playing")
+
+
+def test_an_exit_can_be_a_door_and_the_room_view_says_so():
+    from solo_dm.core.adventure.initial_state import initial_state
+    from solo_dm.core.turn.player_view import exit_label
+    from solo_dm.core.turn.scene import build_scene
+
+    from .adventure_fixture import ADVENTURE as BASE
+    from .adventure_fixture import BESTIARY, tiny_adventure
+    from .builders import fighter
+
+    hall = {**BASE["locations"][0], "exits": [
+        {"id": "hall_to_den", "to": "den", "direction": "east"},
+        {"id": "hall_to_shrine", "to": "shrine", "direction": "north", "door": True}]}
+    adventure = tiny_adventure(locations=[hall, *BASE["locations"][1:]])
+    exits = build_scene(initial_state(adventure, [fighter()], BESTIARY), adventure).exits
+    assert [exit_label(e) for e in exits] == ["east (unexplored)",
+                                              "north (door, unexplored, locked)"]

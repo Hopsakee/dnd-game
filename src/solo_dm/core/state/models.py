@@ -23,12 +23,50 @@ class AbilityScores(FrozenModel):
         return (getattr(self, ability) - 10) // 2
 
 
+DENOMINATIONS = ("pp", "gp", "sp", "cp")  # most valuable first
+COPPER_VALUE = {"pp": 1000, "gp": 100, "sp": 10, "cp": 1}
+
+
+class Coins(FrozenModel):
+    """Money as amounts per denomination (after M7: Azzinax flags 18-19)."""
+
+    pp: int = 0
+    gp: int = 0
+    sp: int = 0
+    cp: int = 0
+
+    def count(self) -> int:
+        return sum(getattr(self, d) for d in DENOMINATIONS)
+
+    def plus(self, other: "Coins") -> "Coins":
+        return Coins(**{d: getattr(self, d) + getattr(other, d) for d in DENOMINATIONS})
+
+    def minus(self, other: "Coins") -> "Coins":
+        return Coins(**{d: getattr(self, d) - getattr(other, d) for d in DENOMINATIONS})
+
+    def cheapest(self, number: int) -> "Coins":
+        """The `number` least valuable coins in the purse: what paying a coin costs."""
+        taken: dict[str, int] = {}
+        for d in reversed(DENOMINATIONS):
+            taken[d] = min(getattr(self, d), number - sum(taken.values()))
+        return Coins(**taken)
+
+    def __str__(self) -> str:
+        return ", ".join(f"{getattr(self, d)} {d}" for d in DENOMINATIONS if getattr(self, d))
+
+
 class Weapon(FrozenModel):
     weapon_id: str
     name: str
     ability: Ability
     damage_dice: str
     damage_type: str
+    # Dice subtracted from every hit's damage (the Cursed Warhammer: 1d4).
+    damage_penalty: str | None = None
+
+    def stats(self) -> str:
+        penalty = f", -{self.damage_penalty} damage" if self.damage_penalty else ""
+        return f"{self.damage_dice} {self.damage_type}{penalty}"
 
 
 class Character(FrozenModel):
@@ -45,9 +83,15 @@ class Character(FrozenModel):
     skill_proficiencies: tuple[str, ...] = ()
     saving_throw_proficiencies: tuple[Ability, ...] = ()
     weapons: tuple[Weapon, ...] = ()
+    wielded: str | None = None  # a weapon_id; None: the first weapon
     inventory: tuple[str, ...] = ()
+    coins: Coins = Coins()
     conditions: tuple[str, ...] = ()
     defeated: bool = False
+
+    def weapon_in_hand(self) -> Weapon | None:
+        return next((w for w in self.weapons if w.weapon_id == self.wielded),
+                    self.weapons[0] if self.weapons else None)
 
 
 Attitude = Literal["hostile", "indifferent", "friendly"]
@@ -59,6 +103,7 @@ class AttackProfile(FrozenModel):
     damage_dice: str
     damage_modifier: int
     damage_type: str
+    damage_penalty: str | None = None  # dice subtracted from the damage
 
 
 class CreatureState(FrozenModel):

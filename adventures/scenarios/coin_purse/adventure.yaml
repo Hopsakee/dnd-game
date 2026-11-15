@@ -1,0 +1,23 @@
+# Scenario (after M7): money as amounts. A purse adds its coins to the hero's;
+# one coin paid at the wishing well opens the gate, and the rest stays.
+id: coin_purse
+title: Coin Purse
+start_location: square
+win_condition: {flag: got_bell}
+locations:
+  - id: square
+    name: Village Square
+    description: A wishing well stands in the middle of the square. A gate without a handle leads north.
+    exits: [{id: square_to_tower, to: tower, direction: north, door: true}]
+    uses:
+      - {pay: 1, set_flag: well_paid}
+  - id: tower
+    name: Bell Tower
+    description: A small brass bell hangs from a hook.
+    exits: [{id: tower_to_square, to: square, direction: south, door: true}]
+items:
+  - {id: worn_purse, name: Worn Purse, description: A small worn purse., location: square,
+     coins: {sp: 8}}
+  - {id: brass_bell, name: Brass Bell, location: tower, on_take: {set_flag: got_bell}}
+locks:
+  - {exit: square_to_tower, opens_on_flag: well_paid}

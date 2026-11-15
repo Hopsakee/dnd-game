@@ -16,6 +16,8 @@ from solo_dm.core.state.events import (
     AdventureWon,
     AttitudeChanged,
     BodySearched,
+    CoinsSpent,
+    CoinsTaken,
     CombatEnded,
     DoorUnlocked,
     Event,
@@ -25,8 +27,9 @@ from solo_dm.core.state.events import (
     LocationDiscovered,
     MovedTo,
     QuestFlagSet,
+    WeaponWielded,
 )
-from solo_dm.core.state.models import GameState
+from solo_dm.core.state.models import GameState, Weapon
 from solo_dm.core.turn.combat import (
     active_combatant,
     end_party_turn,
@@ -35,7 +38,7 @@ from solo_dm.core.turn.combat import (
 )
 from solo_dm.core.turn.intent import Intent
 from solo_dm.core.turn.perception import notice_on_entering
-from solo_dm.core.turn.scene import GUARDIAN_ID, build_scene, open_challenges
+from solo_dm.core.turn.scene import COINS_ID, GUARDIAN_ID, build_scene, open_challenges
 
 
 class Resolution(BaseModel):
@@ -113,7 +116,7 @@ def _attack(state, adventure, actor_id, intent, dice) -> list[Event]:
         if not state.in_combat or active_combatant(state) != actor_id:
             return events
     attacker = state.party[actor_id]
-    attack = character_attack(attacker, attacker.weapons[0].weapon_id)
+    attack = character_attack(attacker)
     return events + resolve_attack(state, actor_id, creature.creature_id, attack, dice)
 
 
@@ -130,12 +133,32 @@ def _take(state, adventure, actor_id, intent, dice) -> list[Event]:
     if intent.target_id not in state.items_on_floor:
         raise Blocked("You cannot take that.")
     item = adventure.item(intent.target_id)
-    events: list[Event] = [ItemTaken(actor_id=actor_id, item_id=item.id)]
+    events: list[Event] = [
+        CoinsTaken(actor_id=actor_id, item_id=item.id, name=item.name, coins=item.coins)
+        if item.coins else ItemTaken(actor_id=actor_id, item_id=item.id,
+                                     weapon=_found_weapon(item))]
     if item.on_take:
         events.append(QuestFlagSet(actor_id=actor_id, flag=item.on_take.set_flag))
         if item.on_take.set_flag == adventure.win_condition.flag:
             events.append(AdventureWon(actor_id=actor_id))
     return events
+
+
+def _found_weapon(item) -> Weapon | None:
+    if item.weapon is None:
+        return None
+    return Weapon(weapon_id=item.id, name=item.name, **item.weapon.model_dump())
+
+
+def _wield(state, adventure, actor_id, intent, dice) -> list[Event]:
+    """Taking another carried weapon in hand; attacks then use it."""
+    hero = state.party[actor_id]
+    weapon = next((w for w in hero.weapons if w.weapon_id == intent.item_id), None)
+    if weapon is None:
+        raise Blocked("You are not carrying that weapon.")
+    if weapon == hero.weapon_in_hand():
+        raise Blocked(f"You already wield the {weapon.name}.")
+    return [WeaponWielded(actor_id=actor_id, weapon_id=weapon.weapon_id, name=weapon.name)]
 
 
 def _unlock(state, adventure, actor_id, intent, dice) -> list[Event]:
@@ -229,30 +252,44 @@ def _ability_check(state, adventure, actor_id, intent, dice) -> list[Event]:
     return events
 
 def _use_item(state, adventure, actor_id, intent, dice) -> list[Event]:
-    """Using a carried item: what the location says it does here (M7)."""
+    """Using a carried item, or paying coins: what the location says it does here (M7)."""
+    uses = adventure.location(state.party_location).uses
+    if intent.item_id == COINS_ID:
+        purse = state.party[actor_id].coins
+        if purse.count() == 0:
+            raise Blocked("You have no coins.")
+        use = next((u for u in uses if u.pay is not None), None)
+        if use is None:
+            raise Blocked("Nothing here to spend coins on.")
+        if purse.count() < use.pay:
+            raise Blocked("You do not have enough coins.")
+        paid = CoinsSpent(actor_id=actor_id, coins=purse.cheapest(use.pay))
+        return [paid, *_flag_set(state, adventure, actor_id, use.set_flag)]
     if intent.item_id not in state.party[actor_id].inventory:
         raise Blocked("You are not carrying that.")
     item = adventure.item(intent.item_id)
     if item.effect is not None:
         return [ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=True),
                 heal(state.party[actor_id], item.effect.heal, dice)]
-    use = next((u for u in adventure.location(state.party_location).uses
-                if u.item == item.id), None)
+    use = next((u for u in uses if u.item == item.id), None)
     if use is None:
         raise Blocked(f"Nothing here to use the {item.name} on.")
-    events: list[Event] = [
-        ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=use.used_up),
-        QuestFlagSet(actor_id=actor_id, flag=use.set_flag),
-    ]
+    used = ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=use.used_up)
+    return [used, *_flag_set(state, adventure, actor_id, use.set_flag)]
+
+
+def _flag_set(state, adventure, actor_id, flag: str) -> list[Event]:
+    """The flag, every door that opens on it, and the win if it is the win flag."""
+    events: list[Event] = [QuestFlagSet(actor_id=actor_id, flag=flag)]
     opened: set[str] = set()  # a door locked on both sides opens once
     for lock in adventure.locks:
-        if (lock.opens_on_flag == use.set_flag and lock.exit in state.locked_exits
+        if (lock.opens_on_flag == flag and lock.exit in state.locked_exits
                 and lock.exit not in opened):
             other_side = adventure.other_side(lock.exit)
             opened |= {lock.exit, other_side}
             events.append(DoorUnlocked(actor_id=actor_id, exit_id=lock.exit,
                                        method="mechanism", other_side=other_side))
-    if use.set_flag == adventure.win_condition.flag:
+    if flag == adventure.win_condition.flag:
         events.append(AdventureWon(actor_id=actor_id))
     return events
 
@@ -291,5 +328,6 @@ _ACTIONS = {
     "talk": _talk,
     "search": _search,
     "use_item": _use_item,
+    "wield": _wield,
     "ability_check": _ability_check,
 }

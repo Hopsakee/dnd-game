@@ -9,6 +9,8 @@ from solo_dm.core.state.events import (
     AttitudeChanged,
     BodySearched,
     CharacterDefeated,
+    CoinsSpent,
+    CoinsTaken,
     CombatEnded,
     CombatStarted,
     CreatureDied,
@@ -25,6 +27,7 @@ from solo_dm.core.state.events import (
     MovedTo,
     QuestFlagSet,
     TurnStarted,
+    WeaponWielded,
 )
 from solo_dm.core.state.models import GameState
 
@@ -65,11 +68,24 @@ def apply_event(state: GameState, event: Event) -> GameState:
         case DoorUnlocked(exit_id=exit_id, other_side=other_side):
             locked = tuple(e for e in state.locked_exits if e not in (exit_id, other_side))
             return state.model_copy(update={"locked_exits": locked})
-        case ItemTaken(actor_id=actor_id, item_id=item_id):
+        case ItemTaken(actor_id=actor_id, item_id=item_id, weapon=weapon):
             floor = {i: loc for i, loc in state.items_on_floor.items() if i != item_id}
             holder = state.party[actor_id]
-            state = _update_combatant(state, actor_id, inventory=(*holder.inventory, item_id))
+            if weapon is not None:
+                state = _update_combatant(state, actor_id, weapons=(*holder.weapons, weapon))
+            else:
+                state = _update_combatant(state, actor_id, inventory=(*holder.inventory, item_id))
             return state.model_copy(update={"items_on_floor": floor})
+        case WeaponWielded(actor_id=actor_id, weapon_id=weapon_id):
+            return _update_combatant(state, actor_id, wielded=weapon_id)
+        case CoinsTaken(actor_id=actor_id, item_id=item_id, coins=coins):
+            floor = {i: loc for i, loc in state.items_on_floor.items() if i != item_id}
+            purse = state.party[actor_id].coins.plus(coins)
+            return _update_combatant(state, actor_id, coins=purse).model_copy(
+                update={"items_on_floor": floor})
+        case CoinsSpent(actor_id=actor_id, coins=coins):
+            purse = state.party[actor_id].coins.minus(coins)
+            return _update_combatant(state, actor_id, coins=purse)
         case HiddenFound(target_id=target_id):
             unfound = tuple(i for i in state.hidden_unfound if i != target_id)
             return state.model_copy(update={"hidden_unfound": unfound})

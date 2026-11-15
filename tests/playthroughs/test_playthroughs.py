@@ -74,9 +74,9 @@ def test_builtin_commands_answer_without_a_model_turn():
     _, _, game, text = play("core_five_rooms", lines)
     assert len(game.session.turns) == 1  # only 'go north' went through the pipeline
     assert game.session.turns[0].flag_note == "too vague"
-    assert "pack: empty" in text and "Fighter: 12/12 HP" in text
+    assert "pack: Coins (18 gp)" in text and "Fighter: 12/12 HP" in text
     assert "* Pillared Hall: south -> Mossy Entrance" in text
-    assert "east (unexplored)" in text and "north (unexplored, locked)" in text
+    assert "east (unexplored)" in text and "north (door, unexplored," in text
     assert "This game is not stored as a campaign." in text
 
 
@@ -148,3 +148,26 @@ def test_scenario_fountain_and_potion_opens_doors_with_a_coin():
     assert "copper_coin" not in game.session.state.party["hero"].inventory
     assert "potion" not in game.session.state.party["hero"].inventory
     assert outcome == "won"
+
+
+def test_scenario_coin_purse_pays_one_coin_and_keeps_the_rest():
+    # Azzinax flag 19: "I threw one piece of silver in the fountain. I received 8.
+    # Now I have none."
+    outcome, events, game, text = play(
+        "scenarios/coin_purse", ["take purse", "toss a coin into the well", "inv", "go north",
+                                 "take bell"])
+    assert outcome == "won"
+    assert events[:3] == ["coins_taken", "coins_spent", "quest_flag_set"]
+    assert str(game.session.state.party["hero"].coins) == "18 gp, 7 sp"
+    assert "pack: Coins (18 gp, 7 sp)" in text
+
+
+def test_scenario_cursed_hammer_wields_the_found_weapon_and_its_curse_bites():
+    lines = ["take warhammer", "wield the warhammer", "inv", "go east"] + ["attack goblin"] * 12
+    outcome, events, game, text = play("scenarios/cursed_hammer", lines + ["take totem"])
+    assert outcome == "won"
+    assert "weapon_wielded" in events
+    hits = [e for t in game.session.turns for e in t.events
+            if e.type == "damage_dealt" and e.actor_id == "hero"]
+    assert hits and all(len(h.penalty_rolls) == 1 for h in hits)
+    assert "wields Bejewelled Warhammer, carries Greatsword" in text
