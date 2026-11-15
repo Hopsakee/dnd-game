@@ -65,3 +65,24 @@ def core_import_violations(core_dir: Path) -> list[Violation]:
         for line, module in _imported_modules(core_dir, file)
         if not _allowed(module)
     ]
+
+
+def imported_modules(package_dir: Path) -> set[str]:
+    """Every module the package's files import, as absolute names (M8: the
+    contract between solo_dm and adventure_ingest)."""
+    root = package_dir.parent
+    found = set()
+    for file in sorted(package_dir.rglob("*.py")):
+        parts = list(file.relative_to(root).with_suffix("").parts)
+        package = parts[:-1]
+        tree = ast.parse(file.read_text(), filename=str(file))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                found |= {alias.name for alias in node.names}
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    base = package[: len(package) - (node.level - 1)]
+                    found.add(".".join(base + ([node.module] if node.module else [])))
+                else:
+                    found.add(node.module)
+    return found

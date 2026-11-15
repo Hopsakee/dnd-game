@@ -1,0 +1,72 @@
+# Gold map step for the test book "The Miller's Cellar" (book/map_dm.png,
+# 800x600, 40 px cells). Same convention as the gold Revenge of Azzinax
+# (dnd-adventures/revenge_of_azzinax/map.yaml): rooms keep the book's number,
+# openings are lettered clockwise from the west end of the north wall,
+# corridors are cut at every junction and numbered in reading order, and every
+# opening names the opening it meets.
+image: map_dm.png
+player_image: player_map.png
+cell_px: 40
+
+locations:
+  room1:
+    cells: [[1, 2, 6, 6]]
+    openings:
+      - {id: 1a, kind: door, direction: east, at: [280, 180], meets: c1a}
+      - {id: 1b, kind: archway, direction: south, at: [140, 280], meets: c2a}
+      - {id: 1c, kind: outside, direction: west, at: [40, 180], meets: yard_a}
+  room2:
+    cells: [[12, 2, 17, 6]]
+    openings:
+      - {id: 2a, kind: door, direction: south, at: [620, 280], meets: c3a}
+      - {id: 2b, kind: door, direction: west, at: [480, 180], meets: c1b}
+  room3:
+    cells: [[13, 9, 17, 12]]
+    openings:
+      - {id: 3a, kind: door, direction: north, at: [620, 360], meets: c3b}
+      - {id: 3b, kind: door, direction: west, at: [520, 420], meets: c5c}
+  room4:
+    cells: [[1, 9, 5, 12]]
+    openings:
+      - {id: 4a, kind: archway, direction: north, at: [140, 360], meets: c2b}
+      - {id: 4b, kind: door, direction: east, at: [240, 420], meets: c4a}
+
+  c1:
+    cells: [[7, 4, 11, 4]]
+    features: [a]
+    openings:
+      - {id: c1a, kind: door, direction: west, at: [280, 180], meets: 1a}
+      - {id: c1b, kind: door, direction: east, at: [480, 180], meets: 2b}
+  c2:
+    cells: [[3, 7, 3, 8]]
+    openings:
+      - {id: c2a, kind: archway, direction: north, at: [140, 280], meets: 1b}
+      - {id: c2b, kind: archway, direction: south, at: [140, 360], meets: 4a}
+  c3:
+    cells: [[15, 7, 15, 8]]
+    openings:
+      - {id: c3a, kind: door, direction: north, at: [620, 280], meets: 2a}
+      - {id: c3b, kind: door, direction: south, at: [620, 360], meets: 3a}
+  c4:
+    cells: [[6, 10, 8, 10]]
+    openings:
+      - {id: c4a, kind: door, direction: west, at: [240, 420], meets: 4b}
+      - {id: c4b, kind: junction, direction: east, at: [380, 420], meets: c5a}
+      - {id: c4c, kind: junction, direction: southeast, at: [380, 420], meets: c6a}
+  c5:
+    cells: [[9, 10, 12, 10]]
+    openings:
+      - {id: c5a, kind: junction, direction: west, at: [380, 420], meets: c4b}
+      - {id: c5b, kind: junction, direction: south, at: [380, 420], meets: c6b}
+      - {id: c5c, kind: door, direction: east, at: [520, 420], meets: 3b}
+  c6:
+    cells: [[9, 11, 9, 13]]
+    features: [b]
+    openings:
+      - {id: c6a, kind: junction, direction: northwest, at: [380, 420], meets: c4c}
+      - {id: c6b, kind: junction, direction: north, at: [380, 420], meets: c5b}
+
+off_map:
+  yard:
+    openings:
+      - {id: yard_a, kind: outside, direction: east, meets: 1c}

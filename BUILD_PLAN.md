@@ -487,6 +487,24 @@ Decided by Jelle 2026-11-14 (supersedes the same day's "separate application" wi
 
 **Done when:** a trial conversion of Azzinax by the agent in the box (questions logged in `questions.md`, not answered) passes `verify` and has an `eval` report against the gold; the own test book's code tests pass in `pytest`; and Jelle has started the agent on his own machine and converted one book with it, ending on a passing `verify`.
 
+**Built in the box (Goal D, 2026-11-15).**
+- The own test book: `evals/millers_cellar/`, "The Miller's Cellar", an original adventure written for this. `build.py` draws the map from one layout (so the gold's cells and `at` match the picture), renders it and a stat block printed as a picture with Chromium, and builds `book/book.pdf` with pandoc/xelatex. `gold/` is the adventure a perfect conversion writes; `stages/` is the same gold split into stage files, which `assemble` turns back into exactly `gold/adventure.yaml` (a test). The skills point at `stages/` as their examples.
+- `src/adventure_ingest/`, `uv run adventure-ingest extract | schema | check | assemble | verify | eval`. Stage files (`stages.py`, built from the engine's models): `map.yaml` and `locations.yaml` (skill map), `creatures.yaml` and `creatures/` (creatures), `items.yaml` (items-locks-hazards, also the win flag, hazards and uses), `challenges.yaml` (every check, `at` a place or a creature; the talk check too). No skill writes exits: `assemble` makes every opening an exit.
+- `verify` walks from the start until nothing new opens (a key, picking, forcing, a flag set by a check, an item or a use; paying coins is assumed possible, the hero starts with 18 gp). It reports unreachable places, a key behind a lock it opens, a door locked on one side or differently on its two sides, an unreachable win, a creature without a stat block, a DC above 25 (a level-1 hero's natural 20 + 3 + 2), and exits that disagree with `map.yaml`. It passes on the gold Azzinax and the test book's gold.
+- `eval` scores facts per field: places and exits by id (the map convention makes them comparable), the rest by what and where, never by the ids a converter chooses (items, flags, checks).
+- `pymupdf4llm` is in the dependency group `ingest` (a default group); the Dockerfile exports with `--no-default-groups`, so the game's image stays without it.
+- The plugin `plugins/adventure-converter/`; start command verified with Claude Code 2.1.325 (`claude --plugin-dir … --agent adventure-converter:adventure-converter`, the plugin prefix is needed), see its README.
+
+**Findings (2026-11-15).**
+- `verify` on the engine's own scenarios: `core_five_rooms`, `coin_purse`, `fountain_and_potion`, `locked_door` and `stuck_door` lock only the side the hero comes from. Harmless there (the far side is reached only through that door) and they are engine fixtures, not conversions, so the rule stays strict and the scenarios stay as they are.
+- **Trial conversion of Azzinax** (`dnd-adventures/ingest/revenge_of_azzinax/`): headless, `claude -p` with the plugin and agent, Opus 5.5, about 8 minutes, 70 turns, $2.35 at list price. All checks and `verify` pass. Eval against the gold: recall 1.00 on every field except items (0.88: the book lets Hye-young pay with the potion *or* 8 sp, and the gold has both) and map openings (0.93: the off-map openings lettered the other way round). 12 questions with their guesses in `questions.md`. The transcript shows it never opened the gold or this plan before `eval`.
+  - A first run scored the same, but the skills then held examples taken from the gold Azzinax (an activity, a challenge's id and goal, the fountain): hints at the answer key. The examples now come from the test book only, and the second run is the one kept. **Rule: examples in the skills come from `evals/`, never from a gold of a bought book.**
+  - Lesson added to the `map` skill: off-map openings are lettered clockwise by direction, like a room's.
+  - The headless start needs `--add-dir ../dnd-game <book folder>`; without it, listing those folders is refused (the first run worked around it).
+  - An agent alone cannot test the eval's honesty: Azzinax is the only book with a gold, and the agent that built the skills had read it. Jelle's own conversion of a second book (The Goblin Cave) is the real test.
+- Not built: reading Fantasy Grounds XML in `extract` (no book in the queue needs it before Skyhorn).
+- `claude plugin validate --strict` passes; the plugin-directory notes (no LICENSE, no icon) matter only for publishing it.
+
 **After M8: domains the engine cannot hold yet (Jelle, 2026-11-14).** Each needs the engine first (a schema field, the narrator or rules using it, a test), then its converter skill. Suggested order:
 1. **Story and style:** the arc, tone and setting, as a brief the narrator writes in. Changes how every game feels.
 2. **Creature goals:** what a monster or NPC wants, so it acts convincingly (talk, flee, bargain).

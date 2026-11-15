@@ -1,0 +1,19 @@
+# Stage file of the test book's gold conversion (evals/millers_cellar): what a
+# perfect run of the adventure-converter's challenges skill writes.
+challenges:
+- at: room2
+  id: turn_millstone
+  goal: turn the jammed millstone a full circle
+  ability: STR
+  skill: athletics
+  dc: 12
+  on_success:
+    set_flag: millstone_turned
+- at: old_grist
+  id: persuade_grist
+  goal: convince Grist the village knows everything, so he hands over the ledger
+  ability: CHA
+  skill: persuasion
+  dc: 15
+  on_success:
+    set_flag: ledger_recovered

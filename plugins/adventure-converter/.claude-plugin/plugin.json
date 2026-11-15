@@ -1,0 +1,6 @@
+{
+  "name": "adventure-converter",
+  "version": "0.1.0",
+  "description": "Converts a published D&D adventure into a solo-dm adventure folder: one agent run as the session, one skill per domain, and the adventure-ingest command as its tools (dnd-game BUILD_PLAN M8).",
+  "author": {"name": "Jelle de Jong"}
+}

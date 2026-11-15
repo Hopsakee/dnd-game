@@ -1,0 +1,58 @@
+# Stage file of the test book's gold conversion (evals/millers_cellar): what a
+# perfect run of the adventure-converter's map skill writes.
+id: millers_cellar
+title: The Miller's Cellar
+start_location: yard
+locations:
+- id: yard
+  name: Mill Yard
+  description: 'Dusk over the mill yard. Wenna, the miller''s daughter, waits by the water
+    wheel. At the east side of the yard a hatch opens on worn stone stairs leading down into
+    the cellar.
+
+    '
+- id: room1
+  name: Flour Store
+  description: 'A long room stacked with flour sacks. Stairs come down through the west wall
+    from the yard; a wooden door stands in the east wall and an archway leads south.
+
+    '
+- id: room2
+  name: Millstone Room
+  description: 'A great millstone rests on its axle in the middle of the room; the shaft above
+    it runs up into the mill. A sturdy oak door with an iron lock stands in the west wall,
+    and a door leads south.
+
+    '
+- id: room3
+  name: Smugglers' Den
+  description: 'Lanterns, a table covered in coins and a strongbox. A heavy door held by iron
+    bolts stands in the north wall; a swollen wooden door in the west wall.
+
+    '
+- id: room4
+  name: Sluice Room
+  description: 'The old mill race runs through a stone channel here, and the air is wet. An
+    archway leads north; a door leads east.
+
+    '
+- id: c1
+  name: Plank Corridor
+  description: A short corridor between two doors. A plank laid over a drain rattles underfoot.
+- id: c2
+  name: Short Passage
+  description: A few steps of passage between two archways.
+- id: c3
+  name: Bolted Passage
+  description: A few steps of passage between a door in the north and a heavy bolted door
+    in the south.
+- id: c4
+  name: West Passage
+  description: A passage runs east from a door to a crossing.
+- id: c5
+  name: East Passage
+  description: A passage runs from a crossing east to a swollen wooden door.
+- id: c6
+  name: Dead-end Passage
+  description: A short passage runs south from a crossing and ends in rock. Old timber props
+    hold up its ceiling.

@@ -16,16 +16,25 @@ dependencies = [
 
 [project.scripts]
 solo-dm = "solo_dm.composition_root:main"
+# M8: converting a book, called by the adventure-converter agent.
+adventure-ingest = "adventure_ingest.cli:run"
 
 [dependency-groups]
 dev = [
     "pytest>=9.1",
     "ruff>=0.16",
 ]
+# M8 ingestion only: kept out of the game's Docker image (--no-default-groups).
+ingest = [
+    "pymupdf4llm>=1.28",
+]
 
 [build-system]
 requires = ["uv_build>=0.9,<0.14"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["solo_dm", "adventure_ingest"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -43,3 +52,4 @@ select = ["E", "F", "I", "UP", "B"]
 # The box's wheel store has Linux wheels only, so the lock covers Linux for now.
 # Running on the Mac mini (decided at M6) needs a darwin entry and a relock there.
 environments = ["sys_platform == 'linux'"]
+default-groups = ["dev", "ingest"]
