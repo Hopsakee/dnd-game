@@ -1,0 +1,16 @@
+# Stage file of the test book's gold conversion (evals/millers_cellar): what a
+# perfect run of the adventure-converter's creatures skill writes.
+creatures:
+- id: goblin_1
+  srd_ref: goblin_warrior
+  location: room4
+  attitude: hostile
+- id: goblin_2
+  srd_ref: goblin_warrior
+  location: room4
+  attitude: hostile
+- id: old_grist
+  srd_ref: old_grist
+  location: room3
+  attitude: indifferent
+  activity: sits at the table counting coins

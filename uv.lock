@@ -83,6 +83,14 @@ wheels = [
 ]
 
 [[package]]
+name = "flatbuffers"
+version = "25.12.19"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/flatbuffers-25.12.19-py2.py3-none-any.whl" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "/opt/wheels" }
@@ -177,11 +185,41 @@ wheels = [
 ]
 
 [[package]]
+name = "networkx"
+version = "3.6.1"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/networkx-3.6.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "numpy"
+version = "2.5.3"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/numpy-2.5.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
 name = "oauthlib"
 version = "3.3.1"
 source = { registry = "/opt/wheels" }
 wheels = [
     { path = "/opt/wheels/oauthlib-3.3.1-py3-none-any.whl" },
+]
+
+[[package]]
+name = "onnxruntime"
+version = "1.29.0"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "flatbuffers" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "protobuf" },
+]
+wheels = [
+    { path = "/opt/wheels/onnxruntime-1.29.0-cp312-cp312-manylinux_2_28_x86_64.whl" },
 ]
 
 [[package]]
@@ -209,6 +247,22 @@ version = "1.6.0"
 source = { registry = "/opt/wheels" }
 wheels = [
     { path = "/opt/wheels/pluggy-1.6.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "protobuf"
+version = "7.36.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/protobuf-7.36.0-cp310-abi3-manylinux2014_x86_64.whl" },
+]
+
+[[package]]
+name = "psutil"
+version = "7.2.2"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl" },
 ]
 
 [[package]]
@@ -243,6 +297,43 @@ version = "2.21.0"
 source = { registry = "/opt/wheels" }
 wheels = [
     { path = "/opt/wheels/pygments-2.21.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "pymupdf"
+version = "1.28.2"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/pymupdf-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "pymupdf-layout"
+version = "1.28.2"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "networkx" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "pymupdf" },
+    { name = "pyyaml" },
+]
+wheels = [
+    { path = "/opt/wheels/pymupdf_layout-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl" },
+]
+
+[[package]]
+name = "pymupdf4llm"
+version = "1.28.2"
+source = { registry = "/opt/wheels" }
+dependencies = [
+    { name = "psutil" },
+    { name = "pymupdf" },
+    { name = "pymupdf-layout" },
+    { name = "tabulate" },
+]
+wheels = [
+    { path = "/opt/wheels/pymupdf4llm-1.28.2-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -354,6 +445,7 @@ wheels = [
 name = "solo-dm"
 version = "0.1.0"
 source = { editable = "." }
+default-groups = ["dev", "ingest"]
 dependencies = [
     { name = "anthropic" },
     { name = "pydantic" },
@@ -368,6 +460,9 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "ruff" },
+]
+ingest = [
+    { name = "pymupdf4llm" },
 ]
 
 [package.metadata]
@@ -386,6 +481,7 @@ dev = [
     { name = "pytest", specifier = ">=9.1" },
     { name = "ruff", specifier = ">=0.16" },
 ]
+ingest = [{ name = "pymupdf4llm", specifier = ">=1.28" }]
 
 [[package]]
 name = "soupsieve"
@@ -405,6 +501,14 @@ dependencies = [
 ]
 wheels = [
     { path = "/opt/wheels/starlette-1.7.0-py3-none-any.whl" },
+]
+
+[[package]]
+name = "tabulate"
+version = "0.10.0"
+source = { registry = "/opt/wheels" }
+wheels = [
+    { path = "/opt/wheels/tabulate-0.10.0-py3-none-any.whl" },
 ]
 
 [[package]]

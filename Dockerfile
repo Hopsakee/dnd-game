@@ -12,7 +12,7 @@ COPY . .
 # uv.lock is written in the development box and names its local wheel store as
 # the source, which exists nowhere else. So install the exact versions it pins
 # from PyPI instead: same versions as tested, other download location.
-RUN uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt \
+RUN uv export --frozen --no-default-groups --no-hashes --no-emit-project -o /tmp/requirements.txt \
  && uv venv /venv \
  && uv pip install --python /venv -r /tmp/requirements.txt \
  && uv pip install --python /venv --no-deps -e . \

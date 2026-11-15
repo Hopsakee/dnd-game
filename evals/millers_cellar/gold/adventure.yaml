@@ -1,0 +1,171 @@
+# Gold adventure for the test book "The Miller's Cellar" (evals/millers_cellar):
+# what a perfect conversion by the M8 converter would write. Exits follow
+# map.yaml; an exit's id is its opening's name.
+id: millers_cellar
+title: The Miller's Cellar
+start_location: yard
+win_condition: {flag: ledger_recovered}
+
+locations:
+  - id: yard
+    name: Mill Yard
+    description: >
+      Dusk over the mill yard. Wenna, the miller's daughter, waits by the water
+      wheel. At the east side of the yard a hatch opens on worn stone stairs
+      leading down into the cellar.
+    exits: [{id: yard_a, to: room1, direction: east}]
+
+  - id: room1
+    name: Flour Store
+    description: >
+      A long room stacked with flour sacks. Stairs come down through the west
+      wall from the yard; a wooden door stands in the east wall and an archway
+      leads south.
+    exits:
+      - {id: 1a, to: c1, direction: east, door: true}
+      - {id: 1b, to: c2, direction: south}
+      - {id: 1c, to: yard, direction: west}
+
+  - id: room2
+    name: Millstone Room
+    description: >
+      A great millstone rests on its axle in the middle of the room; the shaft
+      above it runs up into the mill. A sturdy oak door with an iron lock stands
+      in the west wall, and a door leads south.
+    exits:
+      - {id: 2a, to: c3, direction: south, door: true}
+      - {id: 2b, to: c1, direction: west, door: true}
+    checks:
+      - id: turn_millstone
+        goal: turn the jammed millstone a full circle
+        ability: STR
+        skill: athletics
+        dc: 12
+        on_success: {set_flag: millstone_turned}
+
+  - id: room3
+    name: Smugglers' Den
+    description: >
+      Lanterns, a table covered in coins and a strongbox. A heavy door held by
+      iron bolts stands in the north wall; a swollen wooden door in the west wall.
+    exits:
+      - {id: 3a, to: c3, direction: north, door: true}
+      - {id: 3b, to: c5, direction: west, door: true}
+
+  - id: room4
+    name: Sluice Room
+    description: >
+      The old mill race runs through a stone channel here, and the air is wet.
+      An archway leads north; a door leads east.
+    exits:
+      - {id: 4a, to: c2, direction: north}
+      - {id: 4b, to: c4, direction: east, door: true}
+
+  # a: a loose board over a drain, 5 cp under it.
+  - id: c1
+    name: Plank Corridor
+    description: A short corridor between two doors. A plank laid over a drain rattles underfoot.
+    exits:
+      - {id: c1a, to: room1, direction: west, door: true}
+      - {id: c1b, to: room2, direction: east, door: true}
+
+  - id: c2
+    name: Short Passage
+    description: A few steps of passage between two archways.
+    exits:
+      - {id: c2a, to: room1, direction: north}
+      - {id: c2b, to: room4, direction: south}
+
+  - id: c3
+    name: Bolted Passage
+    description: A few steps of passage between a door in the north and a heavy bolted door in the south.
+    exits:
+      - {id: c3a, to: room2, direction: north, door: true}
+      - {id: c3b, to: room3, direction: south, door: true}
+
+  - id: c4
+    name: West Passage
+    description: A passage runs east from a door to a crossing.
+    exits:
+      - {id: c4a, to: room4, direction: west, door: true}
+      - {id: c4b, to: c5, direction: east}
+      - {id: c4c, to: c6, direction: southeast}
+
+  - id: c5
+    name: East Passage
+    description: A passage runs from a crossing east to a swollen wooden door.
+    exits:
+      - {id: c5a, to: c4, direction: west}
+      - {id: c5b, to: c6, direction: south}
+      - {id: c5c, to: room3, direction: east, door: true}
+
+  # b: rotten props.
+  - id: c6
+    name: Dead-end Passage
+    description: A short passage runs south from a crossing and ends in rock. Old timber props hold up its ceiling.
+    exits:
+      - {id: c6a, to: c4, direction: northwest}
+      - {id: c6b, to: c5, direction: north}
+    hazards:
+      - id: rotten_props
+        name: Rotten Props
+        hidden: {dc: 13}
+        save: {ability: DEX, dc: 12}
+        damage_dice: 1d6
+        damage_type: bludgeoning
+
+entities:
+  - {id: goblin_1, srd_ref: goblin_warrior, location: room4, attitude: hostile}
+  - {id: goblin_2, srd_ref: goblin_warrior, location: room4, attitude: hostile}
+  - id: old_grist
+    srd_ref: old_grist
+    location: room3
+    attitude: indifferent
+    activity: sits at the table counting coins
+    checks:
+      - id: persuade_grist
+        goal: convince Grist the village knows everything, so he hands over the ledger
+        ability: CHA
+        skill: persuasion
+        dc: 15
+        on_success: {set_flag: ledger_recovered}
+
+items:
+  - id: healing_potion
+    name: Potion of Healing
+    description: A small flask of red liquid from Wenna.
+    location: yard
+    effect: {heal: 2d4+2}
+  - id: handaxe
+    name: Rusty Handaxe
+    description: A rusty handaxe forgotten between two flour sacks.
+    location: room1
+    weapon: {ability: STR, damage_dice: 1d6, damage_type: slashing}
+  - id: iron_key
+    name: Iron Key
+    description: An iron key on a goblin's belt.
+    carried_by: goblin_1
+  - id: copper_pieces
+    name: Copper Under the Board
+    description: Five copper pieces hidden under a loose board.
+    location: c1
+    hidden: {dc: 12}
+    coins: {cp: 5}
+  - id: millers_ledger
+    name: Miller's Ledger
+    description: A thick ledger of who brought how many sacks, and who owes what.
+    location: room3
+    on_take: {set_flag: ledger_recovered}
+  - id: silver_pieces
+    name: Silver in the Strongbox
+    description: Twelve silver pieces in Grist's strongbox.
+    location: room3
+    coins: {sp: 12}
+
+locks:
+  - {exit: 2b, key: iron_key}
+  - {exit: c1b, key: iron_key}
+  - {exit: 3a, opens_on_flag: millstone_turned}
+  - {exit: c3b, opens_on_flag: millstone_turned}
+  - {exit: 3b, force_dc: 15}
+  - {exit: c5c, force_dc: 15}

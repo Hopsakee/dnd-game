@@ -168,6 +168,7 @@ uv run pytest            # unit tests and the core import rule
 uv run pytest -m live    # real-model tests (deselected by default; costs a little)
 uv run ruff check
 uv run solo-dm --help
+uv run adventure-ingest --help   # M8: converting a book (see plugins/adventure-converter)
 ```
 
 Settings live in `settings.yaml`. In the development box, model calls go to the
@@ -182,6 +183,11 @@ Prompts live in `src/solo_dm/infrastructure/llm/prompts/`.
 - `src/solo_dm/infrastructure/`: adapters (dice, SRD data, settings).
 - `srd/`: SRD 5.2 data the engine uses, as YAML.
 - `adventures/`: `core_five_rooms` (smoke test) and one scenario per mechanic.
+- `src/adventure_ingest/`: converting a book (M8): extract, check, assemble, verify,
+  eval. Imports only the engine's adventure schema; `tests/test_ingest_architecture.py`.
+- `plugins/adventure-converter/`: the Claude Code agent and skills that convert a
+  book; its README has the start command.
+- `evals/millers_cellar/`: the own test book (original, free to copy) and its gold.
 
 ## Python version
 

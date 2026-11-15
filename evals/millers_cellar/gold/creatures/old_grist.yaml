@@ -1,0 +1,10 @@
+# Old Grist, from the test book's stat block (a picture on page 5).
+stat_block_id: old_grist
+name: Old Grist
+armor_class: 13
+hit_points: 16
+initiative_bonus: 1
+abilities: {STR: 14, DEX: 12, CON: 12, INT: 11, WIS: 10, CHA: 13}
+attacks:
+  - {name: Cleaver, attack_bonus: 4, damage_dice: 1d8, damage_modifier: 2, damage_type: slashing}
+not_implemented: ["Bribe"]
