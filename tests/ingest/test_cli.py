@@ -49,4 +49,4 @@ def test_schema_prints_a_stage_files_json_schema(capsys):
 
 def test_extract_reports_the_picture_pages(tmp_path, capsys):
     assert main(["extract", str(TEST_BOOK / "book" / "book.pdf"), str(tmp_path)]) == 0
-    assert "page 5: 1 word, 1 picture" in capsys.readouterr().out
+    assert "page 6: 1 word, 1 picture" in capsys.readouterr().out

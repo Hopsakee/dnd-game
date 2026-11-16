@@ -1,6 +1,6 @@
 ---
 name: challenges
-description: The challenges step of converting an adventure for solo-dm. Writes challenges.yaml - every ability check the book sets that changes something, as a challenge with an id, the goal the hero pursues, ability, skill, DC and the flag success sets, placed at a location or a creature (the check that talks a creature round). Use in the adventure-converter's step 5.
+description: The challenges step of converting an adventure for solo-dm. Writes challenges.yaml - every ability check the book sets that changes something, as a challenge with an id, the goal the hero pursues, ability, skill, DC, the flag success sets and where it puts the hero, what must hold first, what failure costs and the DC of a retry, placed at a location or a creature (the check that talks a creature round). Use in the adventure-converter's step 5.
 ---
 
 # Challenges: challenges.yaml
@@ -41,10 +41,23 @@ pass is a challenge `at` that creature. Its flag is what the talk wins (the
 goal item, an open door). Ask Jelle when the book leaves open what a successful
 talk gets.
 
-The engine cannot hold yet: a check with a precondition (only after the boss is
-dead), a cost on failure (fall damage), a DC that changes after a failure.
-The book is clear about these, so they are not questions: write the plain
-check with the book's first DC and list the rest under "Engine gaps".
+## A challenge as the book sets it
+
+Write what the book says; these are not questions:
+
+- `requires`: when it can be attempted at all. `defeated: [creature ids]`
+  (only once the guards are dead), `flags: [...]` (only after something),
+  `not_flags: [...]`. Until it holds the game does not offer the goal.
+- `on_failure: {damage_dice, damage_type}`: what a failed attempt costs. A
+  fall is 1d6 bludgeoning per 3 m (10 ft), SRD 5.2.
+- `retry_dc`: the DC of every attempt after a failed one, when the book
+  lowers it ("once fallen, they know which rungs hold").
+- `on_success: {set_flag, move_to}`: `move_to` puts the hero in a place, for
+  a climb or a leap that takes them somewhere (a place inside a room, skill
+  `map`). The flag opens the inner exits, so going back needs no roll.
+
+Example: `climb_to_loft` and `persuade_grist` in the test book's
+`stages/challenges.yaml`.
 
 ## Before you go on
 

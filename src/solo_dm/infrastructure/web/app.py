@@ -274,7 +274,8 @@ def map_panel(session: GameSession, services: WebServices, campaign_id: int | No
     under it; only the node map when the adventure has no player map."""
     node = Div(map_svg(session.state, session.adventure), cls="map")
     found = services.player_map(session.adventure.id) if campaign_id is not None else None
-    seen = revealed_map(session.state, found.map) if found else None
+    within = {loc.id: loc.within for loc in session.adventure.locations if loc.within}
+    seen = revealed_map(session.state, found.map, within) if found else None
     if seen is None:
         return node
     parts = [Div(player_map_svg(seen, f"/map-image/{campaign_id}", found.size),

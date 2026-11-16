@@ -6,19 +6,24 @@ from pydantic import BaseModel
 
 from solo_dm.core.adventure.schema import Adventure
 from solo_dm.core.ports import DicePort
+from solo_dm.core.rules.dice_expression import parse_dice
 from solo_dm.core.rules.rules_attacks import character_attack, resolve_attack
 from solo_dm.core.rules.rules_checks import ability_check
+from solo_dm.core.rules.rules_defeat import dropped_to_zero
 from solo_dm.core.rules.rules_difficulty import fallback_dc
 from solo_dm.core.rules.rules_hazards import spring_hazards
 from solo_dm.core.rules.rules_healing import heal
 from solo_dm.core.state.apply import apply_events
 from solo_dm.core.state.events import (
+    AdventureLost,
     AdventureWon,
     AttitudeChanged,
     BodySearched,
+    ChallengeFailed,
     CoinsSpent,
     CoinsTaken,
     CombatEnded,
+    DamageDealt,
     DoorUnlocked,
     Event,
     HiddenFound,
@@ -38,7 +43,13 @@ from solo_dm.core.turn.combat import (
 )
 from solo_dm.core.turn.intent import Intent
 from solo_dm.core.turn.perception import notice_on_entering
-from solo_dm.core.turn.scene import COINS_ID, GUARDIAN_ID, build_scene, open_challenges
+from solo_dm.core.turn.scene import (
+    COINS_ID,
+    GUARDIAN_ID,
+    build_scene,
+    holds,
+    open_challenges,
+)
 
 
 class Resolution(BaseModel):
@@ -91,14 +102,32 @@ def _move(state, adventure, actor_id, intent, dice) -> list[Event]:
         if lock is not None and lock.stuck:
             raise Blocked(f"The way {exit_.direction} is stuck; force it open.")
         raise Blocked(f"The way {exit_.direction} is locked.")
+    return _enter(state, adventure, actor_id, exit_.to, dice)
+
+
+def _enter(state, adventure, actor_id, location_id: str, dice) -> list[Event]:
+    """Going somewhere: through an exit, or put there by a challenge (M8.5)."""
     events: list[Event] = []
     if state.in_combat:
         events.append(CombatEnded(reason="party_left"))
-    events.append(MovedTo(actor_id=actor_id, location_id=exit_.to))
-    if exit_.to not in state.discovered_locations:
-        events.append(LocationDiscovered(actor_id=actor_id, location_id=exit_.to))
-    events += notice_on_entering(state, adventure, exit_.to)
-    return events + spring_hazards(apply_events(state, events), adventure, exit_.to, dice)
+    events.append(MovedTo(actor_id=actor_id, location_id=location_id))
+    if location_id not in state.discovered_locations:
+        events.append(LocationDiscovered(actor_id=actor_id, location_id=location_id))
+    events += notice_on_entering(state, adventure, location_id)
+    events += spring_hazards(apply_events(state, events), adventure, location_id, dice)
+    return events + _arrive(apply_events(state, events), adventure, actor_id, location_id)
+
+
+def _arrive(state, adventure, actor_id, location_id: str) -> list[Event]:
+    """What arriving here sets (M8.5), once its requirement holds."""
+    if state.outcome != "playing":
+        return []
+    events: list[Event] = []
+    for on_enter in adventure.location(location_id).on_enter:
+        after = apply_events(state, events)
+        if on_enter.set_flag not in after.quest_flags and holds(after, on_enter.requires):
+            events += _flag_set(after, adventure, actor_id, on_enter.set_flag)
+    return events
 
 
 def _attack(state, adventure, actor_id, intent, dice) -> list[Event]:
@@ -240,15 +269,40 @@ def _ability_check(state, adventure, actor_id, intent, dice) -> list[Event]:
     if intent.ability is None:
         raise Blocked("Which ability do you use for that?")
     creature = state.creatures.get(target or "")
-    dc = (challenge.dc if challenge and challenge.dc
-          else fallback_dc(intent.task_category, creature.attitude if creature else None))
+    if challenge is None:
+        dc = fallback_dc(intent.task_category, creature.attitude if creature else None)
+        return [ability_check(state.party[actor_id], intent.ability, intent.skill, dc, dice)]
+    dc = challenge.dc or fallback_dc(intent.task_category, creature.attitude if creature else None)
+    if challenge.retry_dc is not None and challenge.id in state.failed_challenges:
+        dc = challenge.retry_dc
     check = ability_check(state.party[actor_id], intent.ability, intent.skill, dc, dice)
-    if not check.success or challenge is None:
-        return [check]
-    flag = challenge.on_success.set_flag
-    events: list[Event] = [check, QuestFlagSet(actor_id=actor_id, flag=flag)]
-    if flag == adventure.win_condition.flag:
-        events.append(AdventureWon(actor_id=actor_id))
+    if not check.success:
+        return [check, *_challenge_failed(apply_events(state, [check]), actor_id, challenge, dice)]
+    events: list[Event] = [check]
+    events += _flag_set(apply_events(state, events), adventure, actor_id,
+                        challenge.on_success.set_flag)
+    move_to = challenge.on_success.move_to
+    if move_to is not None and apply_events(state, events).outcome == "playing":
+        events += _enter(apply_events(state, events), adventure, actor_id, move_to, dice)
+    return events
+
+
+def _challenge_failed(state, actor_id, challenge, dice) -> list[Event]:
+    """A failed attempt: noted when a retry DC needs it, and its cost paid (M8.5)."""
+    events: list[Event] = []
+    if challenge.retry_dc is not None and challenge.id not in state.failed_challenges:
+        events.append(ChallengeFailed(actor_id=actor_id, challenge_id=challenge.id))
+    if challenge.on_failure is None:
+        return events
+    damage = parse_dice(challenge.on_failure.damage_dice)
+    rolls = dice.roll(f"{damage.count}d{damage.sides}").rolls
+    amount = max(0, sum(rolls) + damage.modifier)
+    events.append(DamageDealt(target_id=actor_id, rolls=rolls, modifier=damage.modifier,
+                              amount=amount, damage_type=challenge.on_failure.damage_type))
+    if state.party[actor_id].hp - amount <= 0:
+        events.append(dropped_to_zero(apply_events(state, events), actor_id, None))
+        if all(m.defeated for m in apply_events(state, events).party.values()):
+            events.append(AdventureLost(reason="every party member fell"))
     return events
 
 def _use_item(state, adventure, actor_id, intent, dice) -> list[Event]:
@@ -258,7 +312,7 @@ def _use_item(state, adventure, actor_id, intent, dice) -> list[Event]:
         purse = state.party[actor_id].coins
         if purse.count() == 0:
             raise Blocked("You have no coins.")
-        use = next((u for u in uses if u.pay is not None), None)
+        use = next((u for u in uses if u.pay is not None and holds(state, u.requires)), None)
         if use is None:
             raise Blocked("Nothing here to spend coins on.")
         if purse.count() < use.pay:
@@ -271,7 +325,7 @@ def _use_item(state, adventure, actor_id, intent, dice) -> list[Event]:
     if item.effect is not None:
         return [ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=True),
                 heal(state.party[actor_id], item.effect.heal, dice)]
-    use = next((u for u in uses if u.item == item.id), None)
+    use = next((u for u in uses if u.item == item.id and holds(state, u.requires)), None)
     if use is None:
         raise Blocked(f"Nothing here to use the {item.name} on.")
     used = ItemUsed(actor_id=actor_id, item_id=item.id, name=item.name, used_up=use.used_up)

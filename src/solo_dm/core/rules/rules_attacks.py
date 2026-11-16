@@ -6,6 +6,7 @@ defeated (plan section 2: no death saves in v1)."""
 
 from solo_dm.core.ports import DicePort
 from solo_dm.core.rules.dice_expression import parse_dice
+from solo_dm.core.rules.rules_d20 import character_d20, roll_d20
 from solo_dm.core.rules.rules_defeat import dropped_to_zero
 from solo_dm.core.state.combatants import armor_class_of, hp_of
 from solo_dm.core.state.events import AttackRolled, DamageDealt, Event
@@ -29,7 +30,10 @@ def character_attack(character: Character) -> AttackProfile:
 def resolve_attack(
     state: GameState, attacker_id: str, target_id: str, attack: AttackProfile, dice: DicePort
 ) -> list[Event]:
-    d20 = dice.roll("1d20").rolls[0]
+    if attacker_id in state.party:
+        d20, rolls, mode, ends = character_d20(state.party[attacker_id], dice)
+    else:
+        (d20, rolls, mode), ends = roll_d20(dice), None
     target_ac = armor_class_of(state, target_id)
     critical = d20 == 20
     hit = critical or (d20 != 1 and d20 + attack.attack_bonus >= target_ac)
@@ -43,6 +47,9 @@ def resolve_attack(
             target_armor_class=target_ac,
             hit=hit,
             critical=critical,
+            d20_rolls=rolls,
+            roll_mode=mode,
+            ends_condition=ends,
         )
     ]
     if not hit:

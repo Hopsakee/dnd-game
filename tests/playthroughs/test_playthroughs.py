@@ -171,3 +171,46 @@ def test_scenario_cursed_hammer_wields_the_found_weapon_and_its_curse_bites():
             if e.type == "damage_dealt" and e.actor_id == "hero"]
     assert hits and all(len(h.penalty_rolls) == 1 for h in hits)
     assert "wields Bejewelled Warhammer, carries Greatsword" in text
+
+
+# M8.5: the four engine gaps from the Azzinax trial, one scenario each.
+
+def test_scenario_spore_gas_gives_disadvantage_on_the_next_roll():
+    lines = ["go north"] + ["force north"] * 4 + ["go north", "take lantern"]
+    outcome, events, game, text = play("scenarios/spore_gas", lines, seed=1)
+    assert outcome == "won"
+    assert events[3:6] == ["saving_throw_rolled", "condition_gained", "check_rolled"]
+    rolls = [e for turn in game.session.turns for e in turn.events if e.type == "check_rolled"]
+    assert (len(rolls[0].d20_rolls), rolls[0].roll_mode) == (2, "disadvantage")
+    assert (len(rolls[1].d20_rolls), rolls[1].roll_mode) == (1, None)
+    assert "unsteady" in text
+    assert game.session.state.party["hero"].conditions == ()
+
+
+def test_scenario_ledge_leap_waits_for_the_goblin_and_a_fall_lowers_the_dc():
+    lines = ["leap onto the ledge"] + ["attack goblin"] * 8 + ["leap onto the ledge"] * 4
+    outcome, events, game, _ = play("scenarios/ledge_leap", lines, seed=20)
+    assert outcome == "won"
+    checks = [e for turn in game.session.turns for e in turn.events if e.type == "check_rolled"]
+    # While the goblin lives the leap is no challenge: a fallback roll that changes nothing.
+    assert game.session.turns[0].fallback and checks[0].dc == 15
+    assert [(c.dc, c.success) for c in checks[1:]] == [(10, False), (5, True)]
+    assert events.count("challenge_failed") == 1
+    assert game.session.state.party_location == "ledge"
+
+
+def test_scenario_two_offers_takes_one_and_wins_on_coming_home():
+    lines = ["take purse", "take potion", "go east", "take bell", "go west"]
+    outcome, events, game, text = play("scenarios/two_offers", lines)
+    assert outcome == "won"
+    assert "elders_potion" not in game.session.state.party["hero"].inventory
+    assert str(game.session.state.party["hero"].coins).endswith("8 sp")
+    assert events[-2:] == ["quest_flag_set", "adventure_won"]
+
+
+def test_scenario_rope_and_catwalk_hides_the_gem_until_the_climb():
+    lines = ["take gem", "climb the rope", "go down", "go up", "take gem"]
+    outcome, events, game, text = play("scenarios/rope_and_catwalk", lines, seed=0)
+    assert outcome == "won"
+    assert game.session.turns[0].events == []  # the gem cannot be seen from the floor
+    assert events.count("check_rolled") == 1  # back up without a second climb

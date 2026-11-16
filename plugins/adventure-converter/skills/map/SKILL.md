@@ -1,6 +1,6 @@
 ---
 name: map
-description: The map step of converting an adventure for solo-dm. Reads the book's map into map.yaml (rooms, corridors, every opening and the opening it meets, cells on the player map) and writes locations.yaml (the adventure's id, title, start and each place's name and description). Use in the adventure-converter's step 2.
+description: The map step of converting an adventure for solo-dm. Reads the book's map into map.yaml (rooms, corridors, every opening and the opening it meets, cells on the player map) and writes locations.yaml (the adventure's id, title, start, each place's name and description, and places inside a room such as a loft or a ledge). Use in the adventure-converter's step 2.
 ---
 
 # Map: map.yaml and locations.yaml
@@ -78,6 +78,24 @@ read a crowded part, render a crop larger with `pymupdf` and read that picture.
   not change in play (water, smoke).
 - `hidden_exits`: `{opening id: DC}` for a secret door found by searching.
 - `tags`: only when the book groups places (a smugglers' hideout).
+
+### A place inside a room
+
+A part of a room the hero must first reach, and from which other things can be
+seen or reached: a loft up a ladder, a ledge, a gallery.
+It is not on the map, so it has no openings in `map.yaml`; write it in
+`locations.yaml` only:
+
+- `id`: the room's id, an underscore and a name: `room2_loft`.
+- `within`: the room (`room2`). The player map shows that room there.
+- `inner_exits` on both: the room's way up and the place's way down, each
+  `{id: <place>_<direction>, to, direction}`: `room2_up` and `room2_loft_down`.
+
+How the hero gets there (a climb, a leap) is a challenge with `move_to`
+(skill `challenges`), and its flag opens both inner exits (`opens_on_flag`,
+skill `items-locks-hazards`). Example: the loft in the test book's
+`stages/locations.yaml`. Something in plain view up there is placed there,
+not hidden in the room below.
 
 ## Ask Jelle when
 

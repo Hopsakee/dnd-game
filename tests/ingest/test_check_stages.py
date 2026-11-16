@@ -40,7 +40,8 @@ def test_a_lock_on_no_opening(stages):
 
 
 def test_an_item_carried_by_nobody(stages):
-    stages.edit("items.yaml", lambda s: s["items"][2].update(carried_by="goblin_9"))
+    stages.edit("items.yaml", lambda s: next(
+        i for i in s["items"] if i["id"] == "iron_key").update(carried_by="goblin_9"))
     assert "'iron_key' is carried by 'goblin_9', who is no creature" in check(
         "items", stages.path)
 
@@ -55,3 +56,23 @@ def test_a_stage_that_breaks_its_schema(stages):
     stages.edit("challenges.yaml", lambda s: s["challenges"][0].update(ability="STRENGTH"))
     problems = check("challenges", stages.path)
     assert len(problems) == 1 and problems[0].startswith("challenges.yaml: Input should be")
+
+
+# M8.5: a place inside a room is not on the map; its inner exits are.
+
+def test_a_place_inside_a_room_named_after_another_room(stages):
+    def change(s):
+        loft = next(p for p in s["locations"] if p["id"] == "room2_loft")
+        loft["within"] = "room3"
+    stages.edit("locations.yaml", change)
+    problems = check("locations", stages.path)
+    assert "'room2_loft' is inside 'room3', so its id starts with 'room3_'" in problems
+    assert ("inner exit 'room2_up' leads from 'room2' to 'room2_loft'; an inner exit leads "
+            "between a room and a place inside it") in problems
+
+
+def test_an_inner_exit_named_against_the_convention(stages):
+    stages.edit("locations.yaml", lambda s: next(
+        p for p in s["locations"] if p["id"] == "room2")["inner_exits"][0].update(id="ladder"))
+    assert "inner exit 'ladder' of 'room2' should be named 'room2_up'" in check(
+        "locations", stages.path)

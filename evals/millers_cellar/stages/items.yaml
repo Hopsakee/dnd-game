@@ -1,14 +1,29 @@
 # Stage file of the test book's gold conversion (evals/millers_cellar): what a
 # perfect run of the adventure-converter's items-locks-hazards skill writes.
 win_condition:
-  flag: ledger_recovered
+  flag: ledger_returned
 items:
+# Wenna's reward: the potion, or 5 sp for a hero who asks to be paid; not both.
 - id: healing_potion
   name: Potion of Healing
-  description: A small flask of red liquid from Wenna.
+  description: A small flask of red liquid Wenna offers.
   location: yard
   effect:
     heal: 2d4+2
+  on_take:
+    set_flag: took_potion
+  requires:
+    not_flags: [took_pay]
+- id: wennas_pay
+  name: Wenna's Silver
+  description: Five silver pieces Wenna pays instead, if the hero asks to be paid.
+  location: yard
+  coins:
+    sp: 5
+  on_take:
+    set_flag: took_pay
+  requires:
+    not_flags: [took_potion]
 - id: handaxe
   name: Rusty Handaxe
   description: A rusty handaxe forgotten between two flour sacks.
@@ -34,13 +49,20 @@ items:
   description: A thick ledger of who brought how many sacks, and who owes what.
   location: room3
   on_take:
-    set_flag: ledger_recovered
+    set_flag: has_ledger
 - id: silver_pieces
   name: Silver in the Strongbox
   description: Twelve silver pieces in Grist's strongbox.
   location: room3
   coins:
     sp: 12
+# In plain view in the loft, out of sight from below: not hidden.
+- id: savings_box
+  name: Gold in Bram's Savings Box
+  description: Three gold pieces in a small wooden box, Bram's savings.
+  location: room2_loft
+  coins:
+    gp: 3
 locks:
 - exit: 2b
   key: iron_key
@@ -54,7 +76,18 @@ locks:
   force_dc: 15
 - exit: c5c
   force_dc: 15
+- exit: room2_up
+  opens_on_flag: loft_reached
+- exit: room2_loft_down
+  opens_on_flag: loft_reached
 hazards:
+- at: room1
+  id: flour_dust
+  name: Flour Dust
+  save:
+    ability: CON
+    dc: 12
+  condition: disadvantage_on_next_roll
 - at: c6
   id: rotten_props
   name: Rotten Props
@@ -66,3 +99,9 @@ hazards:
   damage_dice: 1d6
   damage_type: bludgeoning
 uses: []
+# The win: back in the yard with the ledger.
+arrivals:
+- at: yard
+  set_flag: ledger_returned
+  requires:
+    flags: [has_ledger]

@@ -68,10 +68,12 @@ def build(adventure_map: AdventureMap, locations: LocationsStage, creatures: Cre
             if o.kind == "door":
                 exit_["door"] = True
             exits.append(exit_)
+        exits += [inner.model_dump() for inner in place.inner_exits]
         data = {"id": place.id, "name": place.name, "description": place.description,
-                "exits": exits, **without(place, "id", "name", "description", "hidden_exits")}
+                "exits": exits, **without(place, "id", "name", "description", "hidden_exits",
+                                          "inner_exits")}
         for key, found in (("checks", challenges.challenges), ("hazards", items.hazards),
-                           ("uses", items.uses)):
+                           ("uses", items.uses), ("on_enter", items.arrivals)):
             here = [without(x, "at") for x in found if x.at == place.id]
             if here:
                 data[key] = here

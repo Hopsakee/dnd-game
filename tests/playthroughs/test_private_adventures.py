@@ -101,8 +101,42 @@ def test_gold_azzinax_doors_match_the_map_and_every_place_has_its_cells():
     assert found is not None and found.size == (1751, 2251)
     kinds = {o.id: o.kind for place in (*found.map.locations.values(),
                                         *found.map.off_map.values()) for o in place.openings}
-    exits = {e.id: e.door for loc in adventure.locations for e in loc.exits}
+    inside = {loc.id for loc in adventure.locations if loc.within}  # M8.5: not on the map
+    exits = {e.id: e.door for loc in adventure.locations for e in loc.exits
+             if loc.id not in inside and e.to not in inside}
     assert exits == {i: kinds[i] == "door" for i in exits}
-    on_map = {loc.id for loc in adventure.locations} - set(found.map.off_map)
+    on_map = {loc.id for loc in adventure.locations} - set(found.map.off_map) - inside
     assert on_map == set(found.map.locations)
     assert all(found.map.locations[i].cells for i in on_map)
+
+
+@needs_gold
+def test_gold_azzinax_the_ending_as_the_book_has_it():
+    """M8.5 (Jelle's answers, 2026-11-16): the platform only once Azzinax is
+    defeated, a fall and DC 5 after a miss; on it Min-soo is freed; the win is
+    bringing him home."""
+    adventure, state = gold_at("room4")
+    leap = {"action": "ability_check", "target_id": "reach_the_platform", "ability": "DEX",
+            "skill": "acrobatics", "task_category": "medium"}
+    blocked = resolve_intent(state, adventure, "hero", Intent(**leap), FixedDice([20]))
+    assert blocked.blocked is not None  # Azzinax still stands: no such goal here yet
+    dead = {**state.creatures, "azzinax": state.creatures["azzinax"].model_copy(
+        update={"alive": False})}
+    state = state.model_copy(update={"creatures": dead})
+    resolution, state = do(adventure, state, [7, 3], **leap)  # 7 + 2 < 10; fall 3
+    assert resolution.events[0].dc == 10 and state.party_location == "room4"
+    resolution, state = do(adventure, state, [3], **leap)  # 3 + 2 meets DC 5
+    assert resolution.events[0].dc == 5 and state.party_location == "room4_platform"
+    assert "min_soo_freed" in state.quest_flags and state.outcome == "playing"
+    state = state.model_copy(update={"party_location": "forest"})
+    _, state = do(adventure, state, action="move", target_id="forest_b")
+    assert state.outcome == "won"
+
+
+@needs_gold
+def test_gold_azzinax_hye_young_gives_the_potion_or_the_purse():
+    adventure, state = gold_at("village")
+    _, state = do(adventure, state, action="take", target_id="healing_potion")
+    blocked = resolve_intent(state, adventure, "hero",
+                             Intent(action="take", target_id="silver_pieces"), FixedDice([]))
+    assert blocked.blocked is not None

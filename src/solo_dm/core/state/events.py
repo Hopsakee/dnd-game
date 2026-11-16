@@ -24,6 +24,11 @@ class CheckRolled(Event):
     dc: int
     total: int
     success: bool
+    # Every die rolled (two with advantage or disadvantage), the mode, and a
+    # condition this roll used up (M8.5).
+    d20_rolls: list[int] = []
+    roll_mode: Literal["advantage", "disadvantage"] | None = None
+    ends_condition: str | None = None
 
 
 class SavingThrowRolled(Event):
@@ -34,6 +39,11 @@ class SavingThrowRolled(Event):
     dc: int
     total: int
     success: bool
+    # Every die rolled (two with advantage or disadvantage), the mode, and a
+    # condition this roll used up (M8.5).
+    d20_rolls: list[int] = []
+    roll_mode: Literal["advantage", "disadvantage"] | None = None
+    ends_condition: str | None = None
 
 
 class AttackRolled(Event):
@@ -45,6 +55,11 @@ class AttackRolled(Event):
     target_armor_class: int
     hit: bool
     critical: bool
+    # Every die rolled (two with advantage or disadvantage), the mode, and a
+    # condition this roll used up (M8.5).
+    d20_rolls: list[int] = []
+    roll_mode: Literal["advantage", "disadvantage"] | None = None
+    ends_condition: str | None = None
 
 
 class DamageDealt(Event):
@@ -189,6 +204,22 @@ class HazardSprung(Event):
     type: Literal["hazard_sprung"] = "hazard_sprung"
     hazard_id: str
     name: str  # for the narrator: an unnoticed hazard is not in the scene
+
+
+class ConditionGained(Event):
+    """A party member gains a condition (M8.5: disadvantage on the next roll)."""
+
+    type: Literal["condition_gained"] = "condition_gained"
+    target_id: str
+    condition: str
+    source: str  # what gave it, for the narrator: a hazard's name
+
+
+class ChallengeFailed(Event):
+    """An attempt at a challenge failed; later attempts take its retry DC (M8.5)."""
+
+    type: Literal["challenge_failed"] = "challenge_failed"
+    challenge_id: str
 
 
 class QuestFlagSet(Event):

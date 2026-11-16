@@ -15,14 +15,15 @@ under his mill, beat him senseless and stole the ledger. Their leader, a
 river-trader called Old Grist, means to rewrite it and sell the village its own
 grain back.
 
-**The goal.** Get the ledger back. The adventure is won the moment the hero has
-the Miller's Ledger in hand, however that happens.
+**The goal.** Get the ledger back to Bram. The adventure is won when the hero
+comes back up into the mill yard with the Miller's Ledger, however they got it.
 
 # Starting the adventure
 
 The hero arrives in the **Mill Yard** at dusk. Bram's daughter, Wenna, meets
-them by the water wheel. She gives the hero a *potion of healing* (it restores
-2d4 + 2 hit points) and points to a hatch in the ground at the east side of the
+them by the water wheel. She offers the hero a *potion of healing* (it restores
+2d4 + 2 hit points); a hero who asks to be paid instead gets 5 silver pieces and
+no potion. Then she points to a hatch in the ground at the east side of the
 yard: worn stone stairs lead down into the cellar.
 
 # The cellar
@@ -31,7 +32,11 @@ The cellar is cut from the rock under the mill. Ceilings are 3 metres high,
 the corridors are 1.5 metres wide, and every door is a plain wooden door unless
 the text says otherwise. Map 1 shows the cellar; each square is 1.5 metres.
 
+\newpage
+
 ![Map 1: the Miller's Cellar](map_dm.png){width=100%}
+
+\newpage
 
 ## 1. Flour Store
 
@@ -40,6 +45,11 @@ stacked with flour sacks. A wooden door stands in the east wall, and an open
 archway leads south.
 
 A rusty **handaxe** (1d6 slashing) lies forgotten between two sacks.
+
+**Flour dust.** The first time the hero comes in, a rotten sack splits and
+flour dust fills the air. The hero must succeed on a DC 12 Constitution saving
+throw or, coughing and half blind, have disadvantage on their next attack roll,
+ability check or saving throw.
 
 ## 2. Millstone Room
 
@@ -52,6 +62,13 @@ The millstone is jammed with grit. A hero who puts their shoulder to it and
 succeeds on a DC 12 Strength (Athletics) check turns it a full circle: with a
 clank, the iron bolts on the trapdoor-door between areas C3 and 3 slide back.
 
+**The loft.** A ladder leads up to a plank loft under the mill floor, 3 metres
+above the millstone. Nothing up there can be seen from below. The ladder's rungs
+are rotten: climbing it takes a DC 10 Strength (Athletics) check. On a failure
+the hero falls (1d6 bludgeoning damage); once fallen, they know which rungs
+hold, and every later climb is DC 5. In the loft, in plain view, stands Bram's
+savings box with 3 gold pieces in it.
+
 ## 3. Smugglers' Den
 
 Lanterns, a table covered in coins and a strongbox. **Old Grist** sits at the
@@ -61,9 +78,10 @@ above (see area 2); it cannot be opened from either side until the millstone
 has been turned. A swollen wooden door in the west wall is stuck: a DC 15
 Strength (Athletics) check forces it.
 
-Grist will talk. A hero who succeeds on a DC 15 Charisma (Persuasion) check
-convinces him that the village knows everything, and he hands over the ledger
-and leaves by the west door.
+Grist will talk, but he will not give in while his goblins in area 4 still
+live. Once both are dead, a hero who succeeds on a DC 15 Charisma (Persuasion)
+check convinces him that the village knows everything, and he hands over the
+ledger and leaves by the west door.
 
 **Treasure.** The strongbox holds the **Miller's Ledger** and 12 silver pieces.
 

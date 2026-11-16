@@ -1,0 +1,39 @@
+# Scenario (M8.5): a challenge as the book sets it. The leap to the ledge opens
+# only once the goblin is dead; a miss is a 10 ft fall (1d6 bludgeoning, SRD
+# 5.2), and after one miss every leap is DC 5. Success puts the hero on the
+# ledge, a place inside the hall, where the prisoner is: arriving frees him.
+id: ledge_leap
+title: The Hanging Ledge
+start_location: hall
+win_condition: {flag: prisoner_freed}
+locations:
+  - id: hall
+    name: Echoing Hall
+    description: >-
+      A high hall. Ten feet up, a narrow ledge juts from the far wall, and a
+      bound prisoner sits on it.
+    exits:
+      - {id: hall_up, to: ledge, direction: up}
+    checks:
+      - id: leap_to_ledge
+        goal: leap onto the ledge
+        ability: DEX
+        skill: acrobatics
+        dc: 10
+        retry_dc: 5
+        requires: {defeated: [goblin]}
+        on_failure: {damage_dice: 1d6, damage_type: bludgeoning}
+        on_success: {set_flag: ledge_reached, move_to: ledge}
+  - id: ledge
+    name: The Ledge
+    description: A ledge barely wide enough to kneel on, high above the hall floor.
+    within: hall
+    exits:
+      - {id: ledge_down, to: hall, direction: down}
+    on_enter:
+      - {set_flag: prisoner_freed}
+entities:
+  - {id: goblin, srd_ref: goblin_warrior, location: hall, attitude: hostile}
+locks:
+  - {exit: hall_up, opens_on_flag: ledge_reached}
+  - {exit: ledge_down, opens_on_flag: ledge_reached}

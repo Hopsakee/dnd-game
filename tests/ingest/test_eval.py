@@ -24,18 +24,17 @@ def test_a_conversion_that_misses_the_talk_and_misjudges_the_stuck_door(gold):
     gold.edit("adventure.yaml", change)
     report = evaluate(gold.path, GOLD)
     checks, locks = report["checks"], report["locks"]
-    assert (checks.precision, checks.recall) == (1.0, 1 / 2)
-    assert checks.missing == ["CHA (persuasion) DC 15 at room3"]
-    assert (locks.precision, locks.recall) == (4 / 6, 4 / 6)
+    assert (checks.precision, checks.recall) == (1.0, 2 / 3)
+    assert checks.missing == ["CHA (persuasion) DC 15 at room3, after defeating 2"]
+    assert (locks.precision, locks.recall) == (6 / 8, 6 / 8)
     assert locks.extra == ["3b: force DC 10", "c5c: force DC 10"]
-    assert report["goal"].missing == ["a check at room3"]
 
 
 def test_items_are_compared_by_what_and_where_not_by_their_names(gold):
     gold.edit("adventure.yaml", lambda a: [i.update(id=f"thing_{n}", name=f"Thing {n}")
                                            for n, i in enumerate(a["items"])])
     gold.edit("adventure.yaml", lambda a: a.update(locks=[
-        {**lock, "key": "thing_2"} if "key" in lock else lock for lock in a["locks"]]))
+        {**lock, "key": "thing_3"} if "key" in lock else lock for lock in a["locks"]]))
     score = evaluate(gold.path, GOLD)["items"]
     assert (score.precision, score.recall) == (1.0, 1.0)
 

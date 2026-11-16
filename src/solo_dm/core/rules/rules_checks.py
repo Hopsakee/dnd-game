@@ -2,6 +2,7 @@
 (+ proficiency) vs DC."""
 
 from solo_dm.core.ports import DicePort
+from solo_dm.core.rules.rules_d20 import character_d20
 from solo_dm.core.state.events import CheckRolled, SavingThrowRolled
 from solo_dm.core.state.models import Ability, Character
 
@@ -18,9 +19,12 @@ def ability_check(
     modifier = character.abilities.modifier(ability)
     if skill is not None and skill in character.skill_proficiencies:
         modifier += character.proficiency_bonus
-    d20 = dice.roll("1d20").rolls[0]
+    d20, rolls, mode, ends = character_d20(character, dice)
     total = d20 + modifier
     return CheckRolled(
+        d20_rolls=rolls,
+        roll_mode=mode,
+        ends_condition=ends,
         actor_id=character.character_id,
         ability=ability,
         skill=skill,
@@ -37,8 +41,9 @@ def saving_throw(character: Character, ability: Ability, dc: int, dice: DicePort
     modifier = character.abilities.modifier(ability)
     if ability in character.saving_throw_proficiencies:
         modifier += character.proficiency_bonus
-    d20 = dice.roll("1d20").rolls[0]
+    d20, rolls, mode, ends = character_d20(character, dice)
     return SavingThrowRolled(
         actor_id=character.character_id, ability=ability, d20=d20, modifier=modifier,
+        d20_rolls=rolls, roll_mode=mode, ends_condition=ends,
         dc=dc, total=d20 + modifier, success=d20 + modifier >= dc,
     )

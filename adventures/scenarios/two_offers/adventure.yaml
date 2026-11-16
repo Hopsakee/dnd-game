@@ -1,0 +1,35 @@
+# Scenario (M8.5): requires. The elder offers a reward now: her purse or her
+# potion, not both; taking one makes the other go. The win is coming back to
+# the village with the bell, not taking the bell.
+id: two_offers
+title: The Elder's Bell
+start_location: village
+win_condition: {flag: bell_returned}
+locations:
+  - id: village
+    name: Village Square
+    description: An old woman waits by the well; a path leads east to a ruined chapel.
+    exits: [{id: village_to_chapel, to: chapel, direction: east}]
+    on_enter:
+      - set_flag: bell_returned
+        requires: {flags: [took_bell]}
+  - id: chapel
+    name: Ruined Chapel
+    description: Broken pews and a fallen tower. A small bell lies in the rubble.
+    exits: [{id: chapel_to_village, to: village, direction: west}]
+items:
+  - id: elders_purse
+    name: The Elder's Purse
+    description: Payment up front, if you press her for it.
+    location: village
+    coins: {sp: 8}
+    on_take: {set_flag: pressed_for_pay}
+    requires: {not_flags: [took_potion]}
+  - id: elders_potion
+    name: The Elder's Potion
+    description: A small red vial she offers instead of money.
+    location: village
+    effect: {heal: 2d4+2}
+    on_take: {set_flag: took_potion}
+    requires: {not_flags: [pressed_for_pay]}
+  - {id: chapel_bell, name: Chapel Bell, location: chapel, on_take: {set_flag: took_bell}}

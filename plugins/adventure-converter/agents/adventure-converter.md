@@ -87,10 +87,15 @@ a rule a skill lacks.
   the book answered them.
 - Never invent a mechanic the book does not have to fit the engine (damage
   for a hazard that only gives disadvantage). Leave it out and list it.
+- **When your guess is simply what the book says, it is not a question.**
+  Write it as a one-line note under `## Notes` ("the platform needs only the
+  leader defeated, as the book words it"). Silence in the book about a cost
+  is no cost, not a question. The M8.5 trial still asked three of these
+  (2026-11-16).
 
 Below the questions, keep a section `## Engine gaps`: what the book has that
-the engine cannot hold (a ranged attack, a condition, a rest, a check that
-costs something on failure), one line each, with what you did instead. These
+the engine cannot hold (a ranged attack, a rest, a hidden creature, a magic
+item's bonus), one line each, with what you did instead. These
 are not choices a converter makes: Jelle wants the engine to hold them all, so
 each line is work for the engine, not a simplification to accept.
 
@@ -113,5 +118,4 @@ and put to Jelle yourself.
   wins: ask Jelle whether to bend the adventure or note it as an engine gap.
 - **The win is where the book's hook ends,** not the climax: back with the
   quest-giver, when that is what they asked and the reward is paid there
-  (Jelle, 2026-11-16). When the engine cannot set the
-  win there, take the nearest flag and list it under "Engine gaps".
+  (Jelle, 2026-11-16): an arrival there (skill `items-locks-hazards`).

@@ -141,6 +141,7 @@ class GameState(FrozenModel):
     guardian: str | None = None  # who rescues a hero at 0 HP, while rescues_left > 0
     rescues_left: int = 0
     quest_flags: tuple[str, ...] = ()
+    failed_challenges: tuple[str, ...] = ()  # attempted and failed at least once (M8.5)
 
 
 class CreatureStatBlock(FrozenModel):
