@@ -35,8 +35,10 @@ One entry per creature, not per kind: two goblin warriors are `goblin_1` and
 
 The engine cannot hold yet: hidden creatures, ambush or surprise, creatures that
 appear on a trigger, allies that fight. Place such a creature where it is when
-the hero meets it, and list the simplification in questions.md under
-"Simplified".
+the hero meets it, and list it in questions.md under "Engine gaps". When the
+book says who talks first and who joins the fight (the leader talks, a
+lurking helper attacks once the hero turns hostile), that is `indifferent` in one `group`, not
+a question.
 
 ## A stat block: creatures/<stat_block_id>.yaml
 

@@ -43,7 +43,8 @@ talk gets.
 
 The engine cannot hold yet: a check with a precondition (only after the boss is
 dead), a cost on failure (fall damage), a DC that changes after a failure.
-Write the plain check and note the rest under "Simplified".
+The book is clear about these, so they are not questions: write the plain
+check with the book's first DC and list the rest under "Engine gaps".
 
 ## Before you go on
 
