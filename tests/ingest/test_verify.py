@@ -40,7 +40,7 @@ def test_a_door_locked_on_one_side_only(gold):
 
 
 def test_the_two_sides_of_a_door_locked_differently(gold):
-    gold.edit("adventure.yaml", lambda a: a["locks"][-1].update(force_dc=10))
+    gold.edit("adventure.yaml", lambda a: lock(a, "c5c").update(force_dc=10))
     assert "the two sides of '3b' and 'c5c' are locked differently" in verify(gold.path, SRD)
 
 
@@ -53,7 +53,7 @@ def test_a_win_nobody_can_reach(gold):
         next(loc for loc in adventure["locations"] if loc["id"] == "room2")["checks"][0]["dc"] = 12
         next(i for i in adventure["items"] if i["id"] == "iron_key").update(carried_by="old_grist")
     gold.edit("adventure.yaml", change)
-    assert "win flag 'ledger_recovered' cannot be set" in verify(gold.path, SRD)
+    assert "win flag 'ledger_returned' cannot be set" in verify(gold.path, SRD)
 
 
 def test_a_monster_without_a_stat_block(gold):
@@ -62,8 +62,8 @@ def test_a_monster_without_a_stat_block(gold):
 
 
 def test_an_obstacle_beyond_a_level_one_hero(gold):
-    gold.edit("adventure.yaml", lambda a: a["locks"][-1].update(force_dc=26))
-    gold.edit("adventure.yaml", lambda a: a["locks"][-2].update(force_dc=26))
+    gold.edit("adventure.yaml", lambda a: lock(a, "c5c").update(force_dc=26))
+    gold.edit("adventure.yaml", lambda a: lock(a, "3b").update(force_dc=26))
     assert ("'3b' needs DC 26 to force; a level-1 hero rolls 25 at most"
             in verify(gold.path, SRD))
 
@@ -87,3 +87,23 @@ def test_an_exit_leading_elsewhere_than_the_map_says(gold):
 @needs_azzinax
 def test_the_gold_azzinax_passes():
     assert verify(AZZINAX, SRD) == []
+
+
+def lock(adventure, exit_id):
+    return next(x for x in adventure["locks"] if x["exit"] == exit_id)
+
+
+# M8.5: guards. The ledger can only be taken once a goblin is dead, and that
+# goblin stands where no way leads: only the guard keeps the win out of reach.
+
+def test_a_guard_on_a_creature_out_of_reach_keeps_the_win_out_of_reach(gold):
+    def change(adventure):
+        next(e for e in adventure["entities"] if e["id"] == "goblin_2")["location"] = "c6"
+        ledger = next(i for i in adventure["items"] if i["id"] == "millers_ledger")
+        ledger["requires"] = {"defeated": ["goblin_2"]}
+        grist = next(e for e in adventure["entities"] if e["id"] == "old_grist")
+        grist["checks"][0]["requires"] = {"defeated": ["goblin_2"]}
+    gold.edit("adventure.yaml", drop_exits("c4c", "c5b"))
+    assert "win flag 'ledger_returned' cannot be set" not in verify(gold.path, SRD)
+    gold.edit("adventure.yaml", change)
+    assert "win flag 'ledger_returned' cannot be set" in verify(gold.path, SRD)

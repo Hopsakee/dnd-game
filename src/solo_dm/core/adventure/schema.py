@@ -2,6 +2,7 @@
 is duplicated or a reference does not resolve."""
 
 from collections import Counter
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -22,6 +23,40 @@ class SetFlag(AdventureModel):
     set_flag: str
 
 
+class Requires(AdventureModel):
+    """What must hold first (M8.5): flags set, flags not set, creatures dead.
+    On a challenge, an item, a use, or arriving in a place."""
+
+    flags: tuple[str, ...] = ()
+    not_flags: tuple[str, ...] = ()
+    defeated: tuple[str, ...] = ()
+
+    def holds(self, flags: set[str] | tuple[str, ...], dead: set[str]) -> bool:
+        return (all(f in flags for f in self.flags)
+                and not any(f in flags for f in self.not_flags)
+                and all(c in dead for c in self.defeated))
+
+
+class OnEnter(SetFlag):
+    """Arriving here sets the flag, once its requirement holds (M8.5: back in
+    the village with Min-soo freed)."""
+
+    requires: Requires = Requires()
+
+
+class ChallengeSuccess(SetFlag):
+    """What success sets, and where it puts the party (M8.5: onto the platform)."""
+
+    move_to: str | None = None
+
+
+class FailureDamage(AdventureModel):
+    """What a failed attempt costs (M8.5: a 10 ft fall, 1d6 bludgeoning)."""
+
+    damage_dice: str
+    damage_type: str
+
+
 class CheckConsequence(AdventureModel):
     """A challenge: a goal the party can attempt here or with a creature, and the
     check the book sets for it. The models see the goal, and any attempt at it
@@ -34,7 +69,11 @@ class CheckConsequence(AdventureModel):
     # The DC the adventure states, if it states one (M7); otherwise Python sets it
     # from the interpreter's task category, as for any fallback (plan 3.7).
     dc: int | None = Field(default=None, ge=1)
-    on_success: SetFlag
+    on_success: ChallengeSuccess
+    requires: Requires = Requires()  # not open until it holds (M8.5)
+    on_failure: FailureDamage | None = None
+    # The DC of every attempt after a failed one (M8.5: DC 5 on the platform).
+    retry_dc: int | None = Field(default=None, ge=1)
 
 
 class ItemUse(AdventureModel):
@@ -46,6 +85,7 @@ class ItemUse(AdventureModel):
     pay: int | None = Field(default=None, ge=1)
     set_flag: str
     used_up: bool = False
+    requires: Requires = Requires()
 
     @model_validator(mode="after")
     def _item_or_coins(self) -> "ItemUse":
@@ -63,14 +103,24 @@ class Hazard(AdventureModel):
     """A trap or hazard in a location (M7). With `hidden` it is a hidden thing:
     noticed (by passive Perception on entering, or a search) means avoided.
     Otherwise it springs once when the party enters: each member makes the
-    saving throw, and takes the damage on a failure."""
+    saving throw, and on a failure takes the damage, gains the condition, or both."""
 
     id: str
     name: str
     hidden: Hidden | None = None
     save: SaveSpec
-    damage_dice: str
-    damage_type: str
+    damage_dice: str | None = None
+    damage_type: str | None = None
+    # A condition a failed save gives (M8.5), with or without damage.
+    condition: Literal["disadvantage_on_next_roll"] | None = None
+
+    @model_validator(mode="after")
+    def _does_something(self) -> "Hazard":
+        if self.damage_dice is None and self.condition is None:
+            raise ValueError("a hazard needs damage or a condition")
+        if (self.damage_dice is None) != (self.damage_type is None):
+            raise ValueError("damage needs both damage_dice and damage_type")
+        return self
 
 
 class Exit(AdventureModel):
@@ -92,9 +142,13 @@ class Location(AdventureModel):
     checks: tuple[CheckConsequence, ...] = ()
     hazards: tuple[Hazard, ...] = ()
     uses: tuple[ItemUse, ...] = ()
+    on_enter: tuple[OnEnter, ...] = ()
     # What can be smelt or heard from the rooms next door. Keep it to things that
     # do not change in play (smoke, water, wind), not creatures that may die.
     senses: str | None = None
+    # A part of a room the party must first reach (M8.5: a catwalk, a ledge):
+    # not on the map of its own; the player map shows that room.
+    within: str | None = None
 
 
 class EntityPlacement(AdventureModel):
@@ -153,6 +207,9 @@ class ItemPlacement(AdventureModel):
     coins: Coins | None = None
     weapon: WeaponStats | None = None
     tags: tuple[str, ...] = ()
+    # Only there while this holds (M8.5): one of two offers, gone once the
+    # other is taken.
+    requires: Requires = Requires()
 
 
 class Lock(AdventureModel):
@@ -250,6 +307,9 @@ def _reference_problems(adventure: Adventure) -> list[str]:
     problems += [f"'{i}' is reserved for the party's money" for i in all_ids if i == "coins"]
     if adventure.start_location not in locations:
         problems.append(f"start_location '{adventure.start_location}' is not a location")
+    problems += [f"'{loc.id}' is within unknown location '{loc.within}'"
+                 for loc in adventure.locations
+                 if loc.within is not None and loc.within not in locations]
     for loc in adventure.locations:
         problems += [
             f"exit '{e.id}' leads to unknown location '{e.to}'"
@@ -257,6 +317,9 @@ def _reference_problems(adventure: Adventure) -> list[str]:
             if e.to not in locations
         ]
     entities = {e.id for e in adventure.entities}
+    problems += [f"'{c.id}' moves to unknown location '{c.on_success.move_to}'"
+                 for placed in (*adventure.locations, *adventure.entities) for c in placed.checks
+                 if c.on_success.move_to is not None and c.on_success.move_to not in locations]
     for item in adventure.items:
         if item.location is None and item.carried_by is None:
             problems.append(f"'{item.id}' needs a location or carried_by")
@@ -286,9 +349,25 @@ def _reference_problems(adventure: Adventure) -> list[str]:
         for placed in (*adventure.locations, *adventure.entities)
         for c in placed.checks
     }
+    flags |= {e.set_flag for loc in adventure.locations for e in loc.on_enter}
+    for owner, requires in _requirements(adventure):
+        problems += [f"'{owner}' requires unknown creature '{c}'"
+                     for c in requires.defeated if c not in entities]
+        problems += [f"'{owner}' requires flag '{f}', which is never set"
+                     for f in requires.flags if f not in flags]
     problems += [f"lock on '{lock.exit}' opens on flag '{lock.opens_on_flag}', which is never set"
                  for lock in adventure.locks
                  if lock.opens_on_flag is not None and lock.opens_on_flag not in flags]
     if adventure.win_condition.flag not in flags:
         problems.append(f"win flag '{adventure.win_condition.flag}' is never set")
     return problems
+
+
+def _requirements(adventure: Adventure) -> list[tuple[str, Requires]]:
+    """(owner, requires) of every guard in the adventure."""
+    found = [(c.id, c.requires) for placed in (*adventure.locations, *adventure.entities)
+             for c in placed.checks]
+    found += [(i.id, i.requires) for i in adventure.items]
+    found += [(loc.id, g.requires) for loc in adventure.locations
+              for g in (*loc.uses, *loc.on_enter)]
+    return found

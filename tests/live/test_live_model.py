@@ -389,3 +389,20 @@ def test_any_attempt_at_a_creatures_challenge_targets_the_challenge(llm, text):
     session = _scenario(llm, "scenarios/ability_check")
     intent = _intent(llm, session, text)
     assert (intent.action, intent.target_id) == ("ability_check", "get_past_gatekeeper")
+
+
+# M8.5: a condition is told in the fiction, never named.
+
+def test_a_condition_and_the_roll_it_spoils_are_not_named(llm):
+    from solo_dm.core.state.events import CheckRolled, ConditionGained
+
+    session = _session(llm)
+    gained = ConditionGained(target_id=SOLO_ACTOR, condition="disadvantage_on_next_roll",
+                             source="Mushroom Gas")
+    check = CheckRolled(actor_id=SOLO_ACTOR, ability="STR", skill="athletics", d20=4,
+                        modifier=5, dc=15, total=9, success=False, d20_rolls=[17, 4],
+                        roll_mode="disadvantage", ends_condition="disadvantage_on_next_roll")
+    outcome = TurnOutcome(actor_id=SOLO_ACTOR, events=[gained, check], intent=Intent(
+        action="ability_check", ability="STR", skill="athletics", approach="climb the wall"))
+    text = llm.narrate(outcome, session.scene()).lower()
+    assert "disadvantage" not in text and "condition" not in text

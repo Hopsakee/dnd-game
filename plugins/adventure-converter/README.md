@@ -63,6 +63,11 @@ claude -p "Convert <pdf> with map <png>, book id <id>. Nobody can answer questio
 `--add-dir` lets it read dnd-game's examples and the book's folder; without it,
 listing those folders is refused (seen in the trial run, which worked around it).
 
+Give it a folder that holds only the book (the PDF and its maps). For a trial
+against a gold, nothing in it may come from the gold: a third trial run read a
+checklist of the gold's door pairs that lay next to the book, and had to be
+redone (2026-11-16).
+
 ## What it leaves in `ingest/<book_id>/`
 
 - the stage files above, and `adventure.yaml` assembled from them

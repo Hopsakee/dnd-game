@@ -20,10 +20,19 @@ locations:
 - id: room2
   name: Millstone Room
   description: 'A great millstone rests on its axle in the middle of the room; the shaft above
-    it runs up into the mill. A sturdy oak door with an iron lock stands in the west wall,
-    and a door leads south.
+    it runs up into the mill. A ladder with rotten rungs leads up to a plank loft. A sturdy
+    oak door with an iron lock stands in the west wall, and a door leads south.
 
     '
+  # The way up to a place inside this room: not on the map (BUILD_PLAN M8.5).
+  inner_exits:
+  - {id: room2_up, to: room2_loft, direction: up}
+- id: room2_loft
+  name: Loft
+  description: A plank loft under the mill floor, high above the millstone.
+  within: room2
+  inner_exits:
+  - {id: room2_loft_down, to: room2, direction: down}
 - id: room3
   name: Smugglers' Den
   description: 'Lanterns, a table covered in coins and a strongbox. A heavy door held by iron

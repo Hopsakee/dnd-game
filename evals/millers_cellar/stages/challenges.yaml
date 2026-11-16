@@ -9,11 +9,26 @@ challenges:
   dc: 12
   on_success:
     set_flag: millstone_turned
+- at: room2
+  id: climb_to_loft
+  goal: climb the rotten ladder up to the loft
+  ability: STR
+  skill: athletics
+  dc: 10
+  retry_dc: 5
+  on_failure:
+    damage_dice: 1d6
+    damage_type: bludgeoning
+  on_success:
+    set_flag: loft_reached
+    move_to: room2_loft
 - at: old_grist
   id: persuade_grist
   goal: convince Grist the village knows everything, so he hands over the ledger
   ability: CHA
   skill: persuasion
   dc: 15
+  requires:
+    defeated: [goblin_1, goblin_2]
   on_success:
-    set_flag: ledger_recovered
+    set_flag: has_ledger

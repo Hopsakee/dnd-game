@@ -6,13 +6,17 @@ from solo_dm.core.state.combatants import hp_of
 from solo_dm.core.state.events import (
     AdventureLost,
     AdventureWon,
+    AttackRolled,
     AttitudeChanged,
     BodySearched,
+    ChallengeFailed,
     CharacterDefeated,
+    CheckRolled,
     CoinsSpent,
     CoinsTaken,
     CombatEnded,
     CombatStarted,
+    ConditionGained,
     CreatureDied,
     DamageDealt,
     DoorUnlocked,
@@ -26,6 +30,7 @@ from solo_dm.core.state.events import (
     LocationDiscovered,
     MovedTo,
     QuestFlagSet,
+    SavingThrowRolled,
     TurnStarted,
     WeaponWielded,
 )
@@ -34,6 +39,14 @@ from solo_dm.core.state.models import GameState
 
 def apply_event(state: GameState, event: Event) -> GameState:
     match event:
+        case CheckRolled(ends_condition=str()) | SavingThrowRolled(ends_condition=str()) | \
+                AttackRolled(ends_condition=str()):
+            kept = tuple(c for c in state.party[event.actor_id].conditions
+                         if c != event.ends_condition)
+            return _update_combatant(state, event.actor_id, conditions=kept)
+        case ConditionGained(target_id=target_id, condition=condition):
+            member = state.party[target_id]
+            return _update_combatant(state, target_id, conditions=(*member.conditions, condition))
         case DamageDealt(target_id=target_id, amount=amount):
             return _update_combatant(state, target_id, hp=max(0, hp_of(state, target_id) - amount))
         case GuardianRescued(target_id=target_id):
@@ -99,6 +112,9 @@ def apply_event(state: GameState, event: Event) -> GameState:
             return _update_combatant(state, actor_id, inventory=kept)
         case HazardSprung(hazard_id=hazard_id):
             return state.model_copy(update={"sprung_hazards": (*state.sprung_hazards, hazard_id)})
+        case ChallengeFailed(challenge_id=challenge_id):
+            failed = (*state.failed_challenges, challenge_id)
+            return state.model_copy(update={"failed_challenges": failed})
         case QuestFlagSet(flag=flag):
             return state.model_copy(update={"quest_flags": (*state.quest_flags, flag)})
         case AttitudeChanged(target_id=target_id, attitude=attitude):

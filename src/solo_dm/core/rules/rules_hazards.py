@@ -6,7 +6,13 @@ from solo_dm.core.rules.dice_expression import parse_dice
 from solo_dm.core.rules.rules_checks import saving_throw
 from solo_dm.core.rules.rules_defeat import dropped_to_zero
 from solo_dm.core.state.apply import apply_events
-from solo_dm.core.state.events import AdventureLost, DamageDealt, Event, HazardSprung
+from solo_dm.core.state.events import (
+    AdventureLost,
+    ConditionGained,
+    DamageDealt,
+    Event,
+    HazardSprung,
+)
 from solo_dm.core.state.models import GameState
 
 
@@ -26,6 +32,11 @@ def spring_hazards(state: GameState, adventure: Adventure, location_id: str,
             save = saving_throw(member, hazard.save.ability, hazard.save.dc, dice)
             events.append(save)
             if save.success:
+                continue
+            if hazard.condition is not None:
+                events.append(ConditionGained(target_id=member_id, condition=hazard.condition,
+                                              source=hazard.name))
+            if hazard.damage_dice is None:
                 continue
             damage = parse_dice(hazard.damage_dice)
             rolls = dice.roll(f"{damage.count}d{damage.sides}").rolls

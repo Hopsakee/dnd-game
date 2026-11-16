@@ -56,3 +56,13 @@ def test_a_player_image_needs_a_grid_and_a_plain_file_name():
         AdventureMap.model_validate({**MAP, "cell_px": None})
     with pytest.raises(ValueError, match="file name"):
         AdventureMap.model_validate({**MAP, "player_image": "../secret.png"})
+
+
+# M8.5: a place inside a room (the catwalk in Azzinax room 8) is not on the
+# map's grid of its own; there, the room it is in is shown and is "here".
+
+def test_inside_a_room_its_room_is_shown_and_here():
+    seen = revealed_map(at("hall_ledge"), AdventureMap.model_validate(MAP),
+                        within={"hall_ledge": "hall"})
+    assert seen.here == [(20, 20, 60, 80)]
+    assert (20, 20, 60, 80) in seen.seen

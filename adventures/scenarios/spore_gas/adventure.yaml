@@ -1,0 +1,33 @@
+# Scenario (M8.5): a hazard that gives a condition instead of damage. Spores
+# burst from the fungus (CON 15 save); a failure gives disadvantage on the next
+# attack roll, ability check or saving throw, used up by that roll. The stuck
+# door behind them is the next roll.
+id: spore_gas
+title: Spore Cellar
+start_location: steps
+win_condition: {flag: got_lantern}
+locations:
+  - id: steps
+    name: Cellar Steps
+    description: Damp steps lead down into a cellar thick with pale fungus.
+    exits: [{id: steps_to_cellar, to: cellar, direction: north}]
+  - id: cellar
+    name: Fungus Cellar
+    description: Pale caps cover the walls. A swollen wooden door stands to the north.
+    exits:
+      - {id: cellar_to_steps, to: steps, direction: south}
+      - {id: cellar_to_store, to: store, direction: north, door: true}
+    hazards:
+      - id: spore_burst
+        name: Spore Burst
+        save: {ability: CON, dc: 15}
+        condition: disadvantage_on_next_roll
+  - id: store
+    name: Store Room
+    description: Shelves of rotten crates. A lantern hangs from a hook.
+    exits: [{id: store_to_cellar, to: cellar, direction: south, door: true}]
+items:
+  - {id: lantern, name: Brass Lantern, location: store, on_take: {set_flag: got_lantern}}
+locks:
+  - {exit: cellar_to_store, force_dc: 10}
+  - {exit: store_to_cellar, force_dc: 10}

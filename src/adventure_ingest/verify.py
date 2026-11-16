@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from adventure_ingest.stat_blocks import find_stat_block
 from solo_dm.core.adventure.map_schema import AdventureMap
-from solo_dm.core.adventure.schema import Adventure, Lock
+from solo_dm.core.adventure.schema import Adventure, Lock, Requires
 from solo_dm.core.state.models import CreatureStatBlock
 
 
@@ -43,13 +43,16 @@ def disagreements_with_the_map(adventure: Adventure, adventure_map: AdventureMap
     opening's partner lies (the map convention, BUILD_PLAN M8)."""
     places = {**adventure_map.locations, **adventure_map.off_map}
     owner = {o.id: place_id for place_id, place in places.items() for o in place.openings}
+    within = {loc.id: loc.within for loc in adventure.locations if loc.within}
     problems = []
     for loc in adventure.locations:
         openings = {o.id: o for o in places[loc.id].openings} if loc.id in places else {}
-        exits = {e.id: e for e in loc.exits}
+        # A way between a room and a place inside it (M8.5) is on no map.
+        exits = {e.id: e for e in loc.exits
+                 if within.get(e.to) != loc.id and within.get(loc.id) != e.to}
         problems += [f"opening '{i}' on the map is no exit of '{loc.id}'"
                      for i in openings if i not in exits]
-        for exit_ in loc.exits:
+        for exit_ in exits.values():
             opening = openings.get(exit_.id)
             if opening is None:
                 problems.append(f"exit '{exit_.id}' of '{loc.id}' is no opening on the map")
@@ -73,7 +76,7 @@ def out_of_reach(adventure: Adventure) -> list[str]:
     """Every obstacle can be passed by a level-1 hero's own rolls."""
     tasks = [(lock.exit, lock.force_dc, "force") for lock in adventure.locks]
     tasks += [(lock.exit, lock.pick_dc, "pick") for lock in adventure.locks]
-    tasks += [(c.id, c.dc, "succeed")
+    tasks += [(c.id, min(c.dc, c.retry_dc or c.dc) if c.dc else None, "succeed")
               for placed in (*adventure.locations, *adventure.entities) for c in placed.checks]
     return [f"'{name}' needs DC {dc} to {verb}; a level-1 hero rolls {BEST_ROLL} at most"
             for name, dc, verb in tasks if dc is not None and dc > BEST_ROLL]
@@ -133,26 +136,39 @@ class Reached:
 def explore(adventure: Adventure, barred: frozenset[str] = frozenset()) -> Reached:
     """Walk from the start until nothing new opens: a lock opens with its key,
     by picking or forcing it, or once its flag is set. Exits in `barred` open
-    only by other means than their key."""
+    only by other means than their key. A guard (M8.5) holds once its flags are
+    reached and its creatures can be fought; flags it needs unset are the
+    player's choice, so they are taken as holdable."""
     reached = Reached(locations={adventure.start_location})
+
+    def can(requires: Requires, killable: set[str]) -> bool:
+        return (set(requires.flags) <= reached.flags
+                and set(requires.defeated) <= killable)
+
     while True:
         before = (len(reached.locations), len(reached.items), len(reached.flags))
         here = reached.locations
-        carriers = {e.id for e in adventure.entities if e.location in here} | {"party"}
+        killable = {e.id for e in adventure.entities if e.location in here}
+        carriers = killable | {"party"}
         for item in adventure.items:
-            if item.location in here or item.carried_by in carriers:
+            if (item.location in here or item.carried_by in carriers) and can(
+                    item.requires, killable):
                 reached.items.add(item.id)
                 if item.on_take:
                     reached.flags.add(item.on_take.set_flag)
         checks = [c for loc in adventure.locations if loc.id in here for c in loc.checks]
         checks += [c for e in adventure.entities if e.location in here for c in e.checks]
-        reached.flags |= {c.on_success.set_flag for c in checks}
-        reached.flags |= {u.set_flag for loc in adventure.locations if loc.id in here
-                          for u in loc.uses if u.item is None or u.item in reached.items}
-        for loc in adventure.locations:
-            if loc.id in here:
-                reached.locations |= {e.to for e in loc.exits
-                                      if opens(adventure.lock(e.id), reached, e.id in barred)}
+        for c in checks:
+            if can(c.requires, killable):
+                reached.flags.add(c.on_success.set_flag)
+                if c.on_success.move_to is not None:
+                    reached.locations.add(c.on_success.move_to)
+        for loc in [loc for loc in adventure.locations if loc.id in here]:
+            reached.flags |= {u.set_flag for u in loc.uses if can(u.requires, killable)
+                              and (u.item is None or u.item in reached.items)}
+            reached.flags |= {e.set_flag for e in loc.on_enter if can(e.requires, killable)}
+            reached.locations |= {e.to for e in loc.exits
+                                  if opens(adventure.lock(e.id), reached, e.id in barred)}
         if before == (len(reached.locations), len(reached.items), len(reached.flags)):
             return reached
 

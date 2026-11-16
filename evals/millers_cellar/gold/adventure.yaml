@@ -4,7 +4,7 @@
 id: millers_cellar
 title: The Miller's Cellar
 start_location: yard
-win_condition: {flag: ledger_recovered}
+win_condition: {flag: ledger_returned}
 
 locations:
   - id: yard
@@ -14,6 +14,8 @@ locations:
       wheel. At the east side of the yard a hatch opens on worn stone stairs
       leading down into the cellar.
     exits: [{id: yard_a, to: room1, direction: east}]
+    on_enter:
+      - {set_flag: ledger_returned, requires: {flags: [has_ledger]}}
 
   - id: room1
     name: Flour Store
@@ -25,16 +27,23 @@ locations:
       - {id: 1a, to: c1, direction: east, door: true}
       - {id: 1b, to: c2, direction: south}
       - {id: 1c, to: yard, direction: west}
+    hazards:
+      - id: flour_dust
+        name: Flour Dust
+        save: {ability: CON, dc: 12}
+        condition: disadvantage_on_next_roll
 
   - id: room2
     name: Millstone Room
     description: >
       A great millstone rests on its axle in the middle of the room; the shaft
-      above it runs up into the mill. A sturdy oak door with an iron lock stands
-      in the west wall, and a door leads south.
+      above it runs up into the mill. A ladder with rotten rungs leads up to a
+      plank loft. A sturdy oak door with an iron lock stands in the west wall,
+      and a door leads south.
     exits:
       - {id: 2a, to: c3, direction: south, door: true}
       - {id: 2b, to: c1, direction: west, door: true}
+      - {id: room2_up, to: room2_loft, direction: up}
     checks:
       - id: turn_millstone
         goal: turn the jammed millstone a full circle
@@ -42,6 +51,21 @@ locations:
         skill: athletics
         dc: 12
         on_success: {set_flag: millstone_turned}
+      - id: climb_to_loft
+        goal: climb the rotten ladder up to the loft
+        ability: STR
+        skill: athletics
+        dc: 10
+        retry_dc: 5
+        on_failure: {damage_dice: 1d6, damage_type: bludgeoning}
+        on_success: {set_flag: loft_reached, move_to: room2_loft}
+
+  - id: room2_loft
+    name: Loft
+    description: A plank loft under the mill floor, high above the millstone.
+    within: room2
+    exits:
+      - {id: room2_loft_down, to: room2, direction: down}
 
   - id: room3
     name: Smugglers' Den
@@ -128,14 +152,24 @@ entities:
         ability: CHA
         skill: persuasion
         dc: 15
-        on_success: {set_flag: ledger_recovered}
+        requires: {defeated: [goblin_1, goblin_2]}
+        on_success: {set_flag: has_ledger}
 
 items:
   - id: healing_potion
     name: Potion of Healing
-    description: A small flask of red liquid from Wenna.
+    description: A small flask of red liquid Wenna offers.
     location: yard
     effect: {heal: 2d4+2}
+    on_take: {set_flag: took_potion}
+    requires: {not_flags: [took_pay]}
+  - id: wennas_pay
+    name: Wenna's Silver
+    description: Five silver pieces Wenna pays instead, if the hero asks to be paid.
+    location: yard
+    coins: {sp: 5}
+    on_take: {set_flag: took_pay}
+    requires: {not_flags: [took_potion]}
   - id: handaxe
     name: Rusty Handaxe
     description: A rusty handaxe forgotten between two flour sacks.
@@ -155,12 +189,17 @@ items:
     name: Miller's Ledger
     description: A thick ledger of who brought how many sacks, and who owes what.
     location: room3
-    on_take: {set_flag: ledger_recovered}
+    on_take: {set_flag: has_ledger}
   - id: silver_pieces
     name: Silver in the Strongbox
     description: Twelve silver pieces in Grist's strongbox.
     location: room3
     coins: {sp: 12}
+  - id: savings_box
+    name: Gold in Bram's Savings Box
+    description: Three gold pieces in a small wooden box, Bram's savings.
+    location: room2_loft
+    coins: {gp: 3}
 
 locks:
   - {exit: 2b, key: iron_key}
@@ -169,3 +208,5 @@ locks:
   - {exit: c3b, opens_on_flag: millstone_turned}
   - {exit: 3b, force_dc: 15}
   - {exit: c5c, force_dc: 15}
+  - {exit: room2_up, opens_on_flag: loft_reached}
+  - {exit: room2_loft_down, opens_on_flag: loft_reached}

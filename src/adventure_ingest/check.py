@@ -52,6 +52,13 @@ class Known:
                 yaml.safe_load((folder / "map.yaml").read_text()))
             places = {**adventure_map.locations, **adventure_map.off_map}
             openings = {i: {o.id for o in p.openings} for i, p in places.items()}
+        if (folder / "locations.yaml").is_file():
+            places = LocationsStage.model_validate(
+                yaml.safe_load((folder / "locations.yaml").read_text())).locations
+            for place in places:  # places inside a room and their inner exits (M8.5)
+                if place.within is not None or place.inner_exits:
+                    openings[place.id] = (openings.get(place.id, set())
+                                          | {e.id for e in place.inner_exits})
         creatures: set[str] = set()
         if (folder / "creatures.yaml").is_file():
             creatures = {c.id for c in CreaturesStage.model_validate(
@@ -65,13 +72,34 @@ class Known:
 
 def check_locations(stage: LocationsStage, known: Known, srd: Path) -> list[str]:
     written = {p.id for p in stage.locations}
+    inside = {p.id: p.within for p in stage.locations if p.within is not None}
     problems = [f"'{i}' is on the map but has no name or description"
                 for i in known.openings if i not in written]
-    problems += [f"'{i}' is no place on the map" for i in written if i not in known.openings]
+    problems += [f"'{i}' is no place on the map" for i in written
+                 if i not in known.openings and i not in inside]
+    problems += inner_problems(stage, inside)
     if stage.start_location not in written:
         problems.append(f"start_location '{stage.start_location}' is no place")
     problems += [f"hidden exit '{e}' is no opening of '{p.id}'" for p in stage.locations
                  for e in p.hidden_exits if e not in known.openings.get(p.id, set())]
+    return problems
+
+
+def inner_problems(stage: LocationsStage, inside: dict[str, str]) -> list[str]:
+    """A place inside a room (M8.5): named after the room, no map openings; its
+    inner exits lead between it and that room, named `<place>_<direction>`."""
+    problems = [f"'{place}' is inside '{room}', so its id starts with '{room}_'"
+                for place, room in inside.items() if not place.startswith(room + "_")]
+    problems += [f"'{place}' is inside '{room}', which is no place"
+                 for place, room in inside.items() if room not in {p.id for p in stage.locations}]
+    for place in stage.locations:
+        for e in place.inner_exits:
+            if e.id != f"{place.id}_{e.direction}":
+                problems.append(f"inner exit '{e.id}' of '{place.id}' should be named "
+                                f"'{place.id}_{e.direction}'")
+            if inside.get(e.to) != place.id and inside.get(place.id) != e.to:
+                problems.append(f"inner exit '{e.id}' leads from '{place.id}' to '{e.to}'; "
+                                "an inner exit leads between a room and a place inside it")
     return problems
 
 
@@ -97,7 +125,7 @@ def check_items(stage: ItemsStage, known: Known, srd: Path) -> list[str]:
             problems.append(f"lock on '{lock.exit}', which is no opening")
         if lock.key is not None and lock.key not in items:
             problems.append(f"the key of '{lock.exit}', '{lock.key}', is no item")
-    problems += [f"'{x.at}' is no place" for x in (*stage.hazards, *stage.uses)
+    problems += [f"'{x.at}' is no place" for x in (*stage.hazards, *stage.uses, *stage.arrivals)
                  if x.at not in known.openings]
     problems += [f"a use at '{u.at}' takes '{u.item}', which is no item"
                  for u in stage.uses if u.item is not None and u.item not in items]

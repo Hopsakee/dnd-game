@@ -1,0 +1,29 @@
+# Scenario (M8.5): a place inside a room. The chest on the catwalk is not
+# hidden: it cannot be seen from the floor, and is in plain view once the hero
+# has climbed the rope (STR Athletics DC 10). The climb opens the way up and
+# down, so climbing back up needs no second roll.
+id: rope_and_catwalk
+title: The Catwalk
+start_location: hall
+win_condition: {flag: got_gem}
+locations:
+  - id: hall
+    name: Rope Hall
+    description: A rope hangs from a wooden catwalk strung between the walls, high above.
+    exits:
+      - {id: hall_up, to: catwalk, direction: up}
+    checks:
+      - {id: climb_rope, goal: climb the rope to the catwalk, ability: STR, skill: athletics,
+         dc: 10, on_success: {set_flag: rope_climbed, move_to: catwalk}}
+  - id: catwalk
+    name: Catwalk
+    description: Planks creak underfoot, high above the hall floor.
+    within: hall
+    exits:
+      - {id: catwalk_down, to: hall, direction: down}
+items:
+  - {id: banded_gem, name: Banded Gem, description: A striped stone lying on the planks,
+     location: catwalk, on_take: {set_flag: got_gem}}
+locks:
+  - {exit: hall_up, opens_on_flag: rope_climbed}
+  - {exit: catwalk_down, opens_on_flag: rope_climbed}

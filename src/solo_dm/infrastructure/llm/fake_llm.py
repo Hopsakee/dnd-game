@@ -149,6 +149,8 @@ def _describe(event, names: dict[str, str], scene: SceneContext) -> str:
             return f"{actor} searches (rolls {event.total})."
         case "hazard_sprung":
             return f"{event.name}!"
+        case "condition_gained":
+            return f"The {event.source} leaves {names[event.target_id]} unsteady."
         case "saving_throw_rolled":
             result = "dodges" if event.success else "fails to dodge"
             return f"{actor} {result} ({event.total} vs DC {event.dc})."

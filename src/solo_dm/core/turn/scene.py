@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from solo_dm.core.adventure.schema import Adventure
+from solo_dm.core.adventure.schema import Adventure, Requires
 from solo_dm.core.ports import LoreSnippet
 from solo_dm.core.state.models import GameState
 from solo_dm.core.turn.combat import active_combatant
@@ -61,6 +61,7 @@ class ScenePartyMember(BaseModel):
     armor: str | None
     weapons: list[SceneWeapon]
     inventory: list[SceneItem]
+    conditions: list[str] = []  # M8.5: disadvantage_on_next_roll
 
 
 class SceneHazard(BaseModel):
@@ -149,7 +150,14 @@ def open_challenges(state: GameState, adventure: Adventure) -> list[tuple[str | 
              for creature in state.creatures.values()
              if creature.alive and creature.location == state.party_location
              for c in adventure.entity(creature.creature_id).checks]
-    return [(who, c) for who, c in here if c.on_success.set_flag not in state.quest_flags]
+    return [(who, c) for who, c in here if c.on_success.set_flag not in state.quest_flags
+            and holds(state, c.requires)]
+
+
+def holds(state: GameState, requires: Requires) -> bool:
+    """Whether a requirement (M8.5) holds now."""
+    dead = {c.creature_id for c in state.creatures.values() if not c.alive}
+    return requires.holds(state.quest_flags, dead)
 
 
 def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
@@ -202,6 +210,7 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
             SceneItem.of(adventure, item_id)
             for item_id, where in state.items_on_floor.items()
             if where == location.id and item_id not in state.hidden_unfound
+            and holds(state, adventure.item(item_id).requires)
         ],
         party=[
             ScenePartyMember(
@@ -217,6 +226,7 @@ def build_scene(state: GameState, adventure: Adventure) -> SceneContext:
                 inventory=[SceneItem.of(adventure, i) for i in m.inventory]
                 + ([SceneItem(item_id=COINS_ID, name=f"Coins ({m.coins})")]
                    if m.coins.count() else []),
+                conditions=list(m.conditions),
             )
             for m in state.party.values()
         ],

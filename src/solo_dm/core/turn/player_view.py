@@ -2,6 +2,8 @@
 shortcut expansion and the map of discovered rooms. Built from state, so it
 never names a room or a hidden exit the party has not found."""
 
+from collections.abc import Mapping
+
 from pydantic import BaseModel
 
 from solo_dm.core.adventure.map_schema import AdventureMap
@@ -69,9 +71,12 @@ class RevealedMap(BaseModel):
     view: Rect  # what is seen, with a cell of margin
 
 
-def revealed_map(state: GameState, adventure_map: AdventureMap) -> RevealedMap | None:
+def revealed_map(state: GameState, adventure_map: AdventureMap,
+                 within: Mapping[str, str] | None = None) -> RevealedMap | None:
     """The parts of the book's player map the party has seen, or None when the
-    adventure has none or nothing on it is discovered yet (Azzinax flag 22)."""
+    adventure has none or nothing on it is discovered yet (Azzinax flag 22).
+    `within`: a place inside a room (M8.5) shows as that room."""
+    within = within or {}
     if adventure_map.player_image is None or adventure_map.cell_px is None:
         return None
     size = adventure_map.cell_px
@@ -81,11 +86,12 @@ def revealed_map(state: GameState, adventure_map: AdventureMap) -> RevealedMap |
         return x, y, round((c1 + 1) * size) - x, round((r1 + 1) * size) - y
 
     def cells_of(location_id: str) -> list[Rect]:
-        location = adventure_map.locations.get(location_id)
+        location = adventure_map.locations.get(within.get(location_id, location_id))
         return [pixels(*cell) for cell in location.cells] if location else []
 
     seen: list[Rect] = []
     for location_id in state.discovered_locations:
+        location_id = within.get(location_id, location_id)
         location = adventure_map.locations.get(location_id)
         if location is None:
             continue
