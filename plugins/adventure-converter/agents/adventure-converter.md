@@ -77,13 +77,22 @@ a rule a skill lacks.
   questions of one stage into one call.
 - **In a run without a user** (`claude -p`, or Jelle said he is away), do not
   wait: write the question, take your guess, and go on.
-- Ask about judgements the book leaves open (which way a door seals, whether
-  creatures fight together, the DC the book does not give, what counts as the
-  win). Do not ask what the map, the text or a schema already answers.
+- Ask only about judgements the book leaves open: the DC it does not give,
+  which of two readings of its text is meant. Do not ask what the map, the
+  text or a schema already answers.
+- **The book is clear but the engine cannot hold it: that is not a question.**
+  Follow the book as far as an engine field reaches, and write the rest under
+  "Engine gaps". In the first trial conversion a quarter of the questions
+  were of this kind, and Jelle could not see what was being asked, because
+  the book answered them.
+- Never invent a mechanic the book does not have to fit the engine (damage
+  for a hazard that only gives disadvantage). Leave it out and list it.
 
-Below the questions, keep a section `## Simplified` listing what the book has
-that the engine cannot hold (a ranged attack, a condition, a rest), one line
-each, so Jelle sees what the conversion left out.
+Below the questions, keep a section `## Engine gaps`: what the book has that
+the engine cannot hold (a ranged attack, a condition, a rest, a check that
+costs something on failure), one line each, with what you did instead. These
+are not choices a converter makes: Jelle wants the engine to hold them all, so
+each line is work for the engine, not a simplification to accept.
 
 ## Sub-agents
 
@@ -97,8 +106,12 @@ and put to Jelle yourself.
 - No book text in dnd-game, ever, also not in these skills. Descriptions in the
   stage files are short paraphrases in your own words.
 - Extract only what an engine field reads. Story, NPC lore and pictures wait
-  for later milestones; list them under "Simplified" when they matter for play.
+  for later milestones; list them under "Engine gaps" when they matter for play.
 - Ids are snake_case. Places and exits follow the map convention (skill `map`);
   other ids (items, flags, checks, creatures) are short and descriptive.
 - When `verify` or a `check` fails on something the book really says, the book
   wins: ask Jelle whether to bend the adventure or note it as an engine gap.
+- **The win is where the book's hook ends,** not the climax: back with the
+  quest-giver, when that is what they asked and the reward is paid there
+  (Jelle, 2026-11-16). When the engine cannot set the
+  win there, take the nearest flag and list it under "Engine gaps".
