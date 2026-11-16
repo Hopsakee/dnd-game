@@ -509,7 +509,7 @@ Decided by Jelle 2026-11-14 (supersedes the same day's "separate application" wi
   - The catwalk chest is not hidden but out of sight: one chest holding the agate and 7 gp, in plain view once the hero climbs the rope (DC 10 Athletics). Jelle's suggestion: the catwalk as a place of its own, reached by the rope. Rules now in `items-locks-hazards` (out of sight is not `hidden`; a container is one thing).
   - The mushroom gas: do what the book says, so the engine needs advantage and disadvantage; never invent damage. The platform: DC 10 Acrobatics, a 10 ft fall on failure, DC 5 for every retry, as the book has it.
   - On the whole "Simplified" list: "possible, but in the final game we really don't want to need this." Simplifications are engine work to do, not a state to accept.
-- **Engine gaps from the trial, for the engine milestone that follows** (order not yet decided by Jelle): advantage and disadvantage, and conditions that grant them (the gas); checks with a precondition, a cost on failure and a lower DC on retry (the platform); a win with a precondition at another place (home with Min-soo), and rewards that depend on an earlier choice (15 sp unless paid before); places inside a room, or containers (the catwalk chest); hidden creatures and surprise (the Runt, the goblin behind the statue); ranged attacks, Nimble Escape, Pack Tactics; magic item effects (Ring of Safety +1 saves); an ally who advises, gives a short rest and fights (Spiritus); short and long rests; creatures that arrive on a trigger (room 1's extra goblins).
+- **Engine gaps from the trial.** The four Jelle named go in M8.5 (below); the rest wait until after M9: containers (the catwalk chest holding the agate and 7 gp); hidden creatures and surprise (the Runt, the goblin behind the statue); ranged attacks, Nimble Escape, Pack Tactics; magic item effects (Ring of Safety +1 saves); an ally who advises, gives a short rest and fights (Spiritus); short and long rests; creatures that arrive on a trigger (room 1's extra goblins).
 - Not built: reading Fantasy Grounds XML in `extract` (no book in the queue needs it before Skyhorn).
 - `claude plugin validate --strict` passes; the plugin-directory notes (no LICENSE, no icon) matter only for publishing it.
 
@@ -518,6 +518,38 @@ Decided by Jelle 2026-11-14 (supersedes the same day's "separate application" wi
 2. **Creature goals:** what a monster or NPC wants, so it acts convincingly (talk, flee, bargain).
 3. **NPCs:** who they are, what they know and will tell.
 4. **Images:** pictures from the book or generated, shown at the right moment.
+
+### M8.5 — The book as written: four engine gaps
+Decided by Jelle 2026-11-16: before M9, the engine gets the four gaps he named in his answers to the Azzinax trial, so the gold Azzinax follows the book there instead of simplifying it ("in the final game we really don't want to need this"). The other gaps wait until after M9 (M8 findings). Each one is built as in M7: the schema field, the rules using it, a scenario with a scripted playthrough.
+
+**1. Advantage and disadvantage, and a condition that gives it** (the mushroom gas).
+- Every d20 (attack, check, save) goes through one roll function: with advantage or disadvantage it rolls two and keeps the higher or the lower; both at once cancel (SRD 5.2). The roll event carries both dice, so the log and the narration show them.
+- `Character.conditions` (in the model, unused so far) gets its events, ConditionGained and ConditionEnded. The first condition: disadvantage on the next attack roll, ability check or save, used up by that roll.
+- `Hazard`: damage becomes optional, and a failed save can give a condition. A hazard has damage, a condition, or both.
+- Not now: advantage from the situation (Pack Tactics, an unseen attacker). The roll function takes it once something gives it.
+
+**2. A challenge as the book sets it** (the room 4 platform).
+- `CheckConsequence` gets `requires` (point 3), `on_failure` damage (a 10 ft fall is 1d6 bludgeoning, SRD 5.2) and `retry_dc`: the DC for every attempt after a failed one. A failed attempt is an event, so the next attempt knows it.
+- A challenge whose `requires` does not hold is not open: the models do not see its goal, and an attempt is blocked with the reason.
+- `on_success` can move the hero (`move_to`): jumping onto the platform puts him on it, rather than opening a way he must then still take.
+
+**3. One guard, `requires`, used in four places** (the win at home, Hye-young's offers).
+- `requires: {flags, not_flags, defeated}`: flags set, flags not set, creatures dead. One small model, so the converter learns one thing.
+- On a challenge (the platform: Azzinax defeated); on an item, which is only there while its guard holds (the potion unless the hero pressed for payment, the 8 sp unless he took the potion); on a use; and on a new location field `on_enter: {requires, set_flag}`: arriving sets a flag. Back in the village with Min-soo freed sets the win.
+- Money after the win changes nothing in play, so the 15 sp (unless the 8 sp were taken) belong in the ending the narrator tells, not in an item.
+- `verify` reads the guards: a flag or item counts as reachable only when its guard can hold. `not_flags` are a choice the player makes, so verify takes them as holdable.
+
+**4. A place inside a room** (the catwalk in room 8, the platform in room 4).
+- `Location.within: <room>`: a part of a room the hero must first reach. It is in `locations.yaml`, not in `map.yaml`'s openings; on the player map it shows the room's cells.
+- Its way in and out is an exit pair from `locations.yaml`, as hidden exits are now; a challenge gets the hero there (`move_to`) and its flag opens the pair (`opens_on_flag`), so he can come back down and go up again.
+- So the catwalk chest is in plain view on the catwalk, not hidden; and freeing Min-soo is being on the platform (`on_enter`). Containers stay after M9: the chest's contents are items described as in it.
+
+**Converter, test book and gold.**
+- The stage schemas follow from the engine models as before; `check`, `assemble`, `verify` and `eval` learn `requires`, `on_enter`, `within`, `move_to`, `on_failure`, `retry_dc` and conditions.
+- The Miller's Cellar gets one example of each (skill examples come only from `evals/`): a loft reached by a ladder that can drop you, dust that gives disadvantage, a reward with a guard, a win on coming back. The skills drop these four from their "Engine gaps" and say how to write them.
+- The gold Azzinax (a dnd-adventures PR): the win at home, Hye-young's offers guarded, the platform and the catwalk as places within their rooms, the gas as a hazard with a condition.
+
+**Done when:** each of the four has a scenario with a scripted playthrough; the gold Azzinax and the test book pass `verify` with them; a new headless trial conversion of Azzinax passes `verify`, scores at least the first trial's recall, and asks nothing the book answers; and Jelle plays the new gold through the platform and back to the village on his phone.
 
 ### M9 — Scaling to one player (The Goblin Cave)
 - An `adventure-ingest scale` stage: each encounter's difficulty for the party the book was written for, cut to one character's budget (fewer or weaker monsters), deterministically.
